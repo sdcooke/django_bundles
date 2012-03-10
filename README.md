@@ -48,7 +48,7 @@ BUNDLES = (
 
 All of the `BUNDLES` options can be found in django_bundles/core.py on the `Bundle` and `BundleFile` classes.
 
-The `{% render_bundle bundle_name %}` template tag can then be used to render the HTML (e.g. script or link tag) in place.
+The `{% render_bundle bundle_name %}` template tag can then be used to render the HTML (e.g. script or link tag) in place. django_bundles/templates needs to be in your template directories list (or copy them in).
 
 Other settings are (check out django_bundles/conf/default_settings.py):
 
