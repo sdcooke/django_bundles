@@ -1,6 +1,8 @@
 from django import template
 from django.template.loader import render_to_string
 
+from django.core.exceptions import ImproperlyConfigured
+
 from django_bundles.conf.bundles_settings import bundles_settings
 from django_bundles.core import get_bundles
 
@@ -11,7 +13,10 @@ def render_bundle(bundle_name):
     """
     Renders the HTML for a bundle in place - one HTML tag or many depending on settings.USE_BUNDLES
     """
-    bundle = get_bundles()[bundle_name]
+    try:
+        bundle = get_bundles()[bundle_name]
+    except KeyError:
+        raise ImproperlyConfigured("Bundle '%s' is not defined" % bundle_name)
 
     if bundles_settings.USE_BUNDLES:
         # Render one tag

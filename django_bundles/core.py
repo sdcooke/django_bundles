@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
 from django_bundles.conf.bundles_settings import bundles_settings
 from django_bundles.utils import expand_file_names
@@ -61,8 +62,11 @@ class Bundle(object):
                 extra = fileconf[1]
 
             # Expand *s in filenames
-            for filename in expand_file_names(path, files_root):
-                self.files.append(BundleFile(filename, files_root, files_url_root, self.media, self.bundle_type, extra=extra))
+            try:
+                for filename in expand_file_names(path, files_root):
+                    self.files.append(BundleFile(filename, files_root, files_url_root, self.media, self.bundle_type, extra=extra))
+            except OSError:
+                raise ImproperlyConfigured("Bundle %s - could not find file(s): %s" % (self.name, path))
 
         # Get the processors or use the default list
         if 'processors' in conf_dict:
