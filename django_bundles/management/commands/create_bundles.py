@@ -21,6 +21,7 @@ def make_bundle(bundle):
             bundle_file_output = processor_pipeline(bundle_file.processors, open(bundle_file.file_path, 'rb'))
             shutil.copyfileobj(bundle_file_output, temp_output_file)
             bundle_file_output.close()
+            temp_output_file.write('\n')
 
         # Seek back to the start to run post processors
         temp_output_file.seek(0)
