@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 
 from django_bundles.conf.bundles_settings import bundles_settings
 from django_bundles.core import get_bundles, set_bundle_versions
-from django_bundles.processors import processor_pipeline
+from django_bundles.processors import processor_pipeline, processor_library
 
 import os
 import shutil
@@ -78,5 +78,13 @@ BUNDLES_VERSIONS = {
 %s
 }
 """ % version_info)
+
+        for single_file_input, single_file_output in bundles_settings.BUNDLES_SINGLE_FILES:
+            self.stdout.write("Writing: %s\n" % single_file_output)
+            file_type = os.path.splitext(single_file_input)[1][1:]
+            processors = processor_library.get_default_preprocessors_for(file_type) + processor_library.get_default_postprocessors_for(file_type)
+            with processor_pipeline(processors, open(single_file_input, 'rb')) as temp_output:
+                with open(single_file_output, 'wb') as output_file:
+                    shutil.copyfileobj(temp_output, output_file)
 
         self.stdout.write("Done.\n")

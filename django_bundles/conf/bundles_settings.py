@@ -12,6 +12,12 @@ class SettingsHelper(object):
 
     BUNDLES_LINTING = getattr(settings, 'BUNDLES_LINTING', default_settings.BUNDLES_LINTING)
 
+    BUNDLES_LINT_SUCCESS_OK = getattr(settings, 'BUNDLES_LINT_SUCCESS_OK', default_settings.BUNDLES_LINT_SUCCESS_OK)
+
+    BUNDLES_SINGLE_FILES = getattr(settings, 'BUNDLES_SINGLE_FILES', default_settings.BUNDLES_SINGLE_FILES)
+
+    BUNDLES_OVERRIDE = getattr(settings, 'BUNDLES_OVERRIDE', default_settings.BUNDLES_OVERRIDE)
+
     def __getattr__(self, name):
         if hasattr(settings, name):
             return getattr(settings, name)

@@ -40,9 +40,10 @@ def render_bundle(bundle_name):
 
     return '\n'.join(bundle_files)
 
-@register.assignment_tag(name='get_bundles')
-def do_get_bundles():
-    """
-    Assigns the bundle definitions to a context variable
-    """
-    return get_bundles()
+if hasattr(register, 'assignment_tag'):
+    @register.assignment_tag(name='get_bundles')
+    def do_get_bundles():
+        """
+        Assigns the bundle definitions to a context variable
+        """
+        return get_bundles()

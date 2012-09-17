@@ -54,7 +54,13 @@ class Bundle(object):
         # Build the list of BundleFiles
         self.files = []
 
-        for fileconf in conf_dict['files']:
+        conf_files = list(conf_dict['files'])
+
+        if self.name in bundles_settings.BUNDLES_OVERRIDE:
+            conf_files = list(bundles_settings.BUNDLES_OVERRIDE[self.name].get('files_prepend', [])) + conf_files
+            conf_files = conf_files + list(bundles_settings.BUNDLES_OVERRIDE[self.name].get('files_append', []))
+
+        for fileconf in conf_files:
             path, extra = fileconf, None
             # Each file definition can be a string or tuple containing the path and the conf dict
             if isinstance(fileconf, (tuple, list)):

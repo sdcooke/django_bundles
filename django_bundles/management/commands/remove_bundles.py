@@ -20,4 +20,8 @@ class Command(BaseCommand):
         self.stdout.write("Removing bundles version file: %s\n" % bundles_settings.BUNDLES_VERSION_FILE)
         os.remove(bundles_settings.BUNDLES_VERSION_FILE)
 
+        for _, single_file_output in bundles_settings.BUNDLES_SINGLE_FILES:
+            self.stdout.write("Removing: %s\n" % single_file_output)
+            os.remove(single_file_output)
+
         self.stdout.write("Done.\n")
