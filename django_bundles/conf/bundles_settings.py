@@ -16,8 +16,6 @@ class SettingsHelper(object):
 
     BUNDLES_SINGLE_FILES = getattr(settings, 'BUNDLES_SINGLE_FILES', default_settings.BUNDLES_SINGLE_FILES)
 
-    BUNDLES_OVERRIDE = getattr(settings, 'BUNDLES_OVERRIDE', default_settings.BUNDLES_OVERRIDE)
-
     def __getattr__(self, name):
         if hasattr(settings, name):
             return getattr(settings, name)
