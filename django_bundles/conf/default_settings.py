@@ -4,13 +4,13 @@ USE_BUNDLES = not settings.DEBUG
 
 DEFAULT_PREPROCESSORS = {
     'less': [
-        'django_bundles.contrib.processors.less.LessProcessor',
+        ('django_bundles.processors.ExecutableProcessor', {'command':'lessc %(infile)s %(outfile)s'}),
     ],
 }
 
 DEFAULT_POSTPROCESSORS = {
     'js': [
-        'django_bundles.contrib.processors.uglify.UglifyProcessor',
+        ('django_bundles.processors.ExecutableProcessor', {'command':'uglifyjs -nc --unsafe -o %(outfile)s %(infile)s'}),
     ],
 }
 

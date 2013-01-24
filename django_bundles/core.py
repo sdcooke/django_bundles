@@ -27,9 +27,11 @@ class Bundle(object):
         'bundle_file_root': settings.MEDIA_ROOT,                        # Root path for the bundle file [OPTIONAL - defaults to files_root]
         'bundle_filename': 'master_css',                                # Filename for the bundle (without extension) [OPTIONAL - defaults to the bundle name]
         'processors': (                                                 # A list of post processors for the bundle (e.g. minifying) [OPTIONAL - defaults to the default processors for the bundle type]
-            'django_bundles.contrib.processors.uglify.UglifyProcessor', # String,
-            UglifyProcessor,                                            # Class,
-            UglifyProcessor(),                                          # ...or instance
+            'django_bundles.processors.django_template.DjangoTemplateProcessor', # String,
+            DjangoTemplateProcessor,                                             # Class,
+            DjangoTemplateProcessor(),                                           # Instance,
+            (ExecutableProcessor, {'command':'lessc %(infile)s %(outfile)s'}),   # Class and kwargs
+            ('django_bundles.processors.ExecutableProcessor', {'command':'lessc %(infile)s %(outfile)s'}),   # String and kwargs
         )
     }),
 

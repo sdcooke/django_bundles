@@ -1,8 +1,10 @@
 from django_bundles.conf.bundles_settings import bundles_settings
 from django_bundles.utils import run_command, get_class
+from django.core.exceptions import ImproperlyConfigured
 
 from StringIO import StringIO
 from tempfile import NamedTemporaryFile
+
 
 class Processor(object):
     """
@@ -16,17 +18,21 @@ class Processor(object):
         """
         return input_file
 
+
 class ExecutableProcessor(Processor):
     """
     A Processor that runs an external command on the file
     """
     requires_actual_file = True
-    command = 'cat %(infile)s > %(outfile)s' # Define a command
+
+    def __init__(self, command):
+        self.command = command
 
     def process_file(self, input_file):
         output_file = NamedTemporaryFile()
         run_command(self.command % {'infile': input_file.name, 'outfile': output_file.name})
         return output_file
+
 
 class StringProcessor(Processor):
     """
@@ -43,6 +49,7 @@ class StringProcessor(Processor):
         output_file.write(self.process_string(input_file.read()))
         return output_file
 
+
 def make_actual_file(input_file):
     if not hasattr(input_file, 'name'):
         new_input_file = NamedTemporaryFile()
@@ -51,6 +58,7 @@ def make_actual_file(input_file):
         input_file = new_input_file
         input_file.seek(0)
     return input_file
+
 
 def processor_pipeline(processors, start_file, require_actual_file=False):
     """
@@ -74,19 +82,33 @@ def processor_pipeline(processors, start_file, require_actual_file=False):
 
     return input_file
 
+
 class ProcessorLibrary(object):
-    def get_processor(self, processor_name):
+    def get_processor(self, processor_defn):
         """
-        Gets an instance of a processor from a string, class or instance
+        Gets an instance of a processor from a string, class, instance or tuple of string/class and init args
         """
-        if isinstance(processor_name, Processor):
-            return processor_name
-        if isinstance(processor_name, type) and issubclass(processor_name, Processor):
-            return processor_name()
-        processor_class = get_class(processor_name)
+        if isinstance(processor_defn, Processor):
+            # instance
+            return processor_defn
+
+        if isinstance(processor_defn, tuple) and len(processor_defn) == 2:
+            # tuple
+            class_or_path, init_kwargs = processor_defn
+        else:
+            # class or path
+            class_or_path, init_kwargs = processor_defn, {}
+
+        if isinstance(class_or_path, type) and issubclass(class_or_path, Processor):
+            # class
+            return class_or_path(**init_kwargs)
+
+        processor_class = get_class(class_or_path)
         if processor_class:
-            return processor_class()
-        return None
+            # path
+            return processor_class(**init_kwargs)
+
+        raise ImproperlyConfigured("Invalid processor: %s" % repr(processor_defn))
 
     def get_processors(self, processors):
         return [instance for instance in (self.get_processor(processor) for processor in processors) if instance]

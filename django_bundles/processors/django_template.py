@@ -2,7 +2,8 @@ from django.views.debug import get_safe_settings
 from django.template import Context, Template
 
 from django_bundles.core import get_bundles
-from django_bundles.processors import StringProcessor
+from django_bundles.processors.base import StringProcessor
+
 
 class DjangoTemplateProcessor(StringProcessor):
     """
@@ -16,9 +17,8 @@ class DjangoTemplateProcessor(StringProcessor):
         return {
             'settings': get_safe_settings(),
             'bundles': get_bundles(),
-        }
+            }
 
     def process_string(self, input):
         template = Template(input)
         return template.render(Context(self.get_context()))
-
