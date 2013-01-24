@@ -39,13 +39,16 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.show_successes = not bool(options.get('failures_only'))
 
+        files_linted = set()
+
         failures = 0
         for bundle in get_bundles():
             for bundle_file in bundle.files:
-                if bundle_file.lint:
+                if bundle_file.lint and bundle_file.file_path not in files_linted:
                     with processor_pipeline(bundle_file.processors, open(bundle_file.file_path, 'rb'), require_actual_file=True) as file_output:
                         file_output.seek(0)
                         failures += self.lint_file(file_output.name, bundle.bundle_type, bundle_file.file_path)
+                    files_linted.add(bundle_file.file_path)
 
         for single_file_path, _ in bundles_settings.BUNDLES_SINGLE_FILES:
             failures += self.lint_file(single_file_path, os.path.splitext(single_file_path)[1][1:], single_file_path)
