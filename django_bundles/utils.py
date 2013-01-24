@@ -3,15 +3,15 @@ import subprocess
 import os
 import fnmatch
 
-def run_command(cmd):
+def run_command(cmd, stdin=None):
     """
     Runs a command - including commands with pipes - and returns (stdout, stderr)
     """
     splitcmd = cmd.split('|')
-    cmds = [subprocess.Popen(shlex.split(splitcmd[0]), stdout=subprocess.PIPE, stderr=subprocess.PIPE)]
+    cmds = [subprocess.Popen(shlex.split(splitcmd[0]), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)]
     for i, c in enumerate(splitcmd[1:]):
         cmds.append(subprocess.Popen(shlex.split(c), stdin=cmds[i - 1].stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-    return cmds[-1].communicate()
+    return cmds[-1].communicate(stdin)
 
 
 def get_class(class_string):

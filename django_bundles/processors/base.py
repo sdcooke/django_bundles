@@ -25,12 +25,39 @@ class ExecutableProcessor(Processor):
     """
     requires_actual_file = True
 
-    def __init__(self, command):
+    def __init__(self, command, use_stdin=False, use_stdout=False):
         self.command = command
+        self.use_stdin = use_stdin
+        self.use_stdout = use_stdout
+
+        if self.use_stdin:
+            self.requires_actual_file = False
 
     def process_file(self, input_file):
-        output_file = NamedTemporaryFile()
-        run_command(self.command % {'infile': input_file.name, 'outfile': output_file.name})
+        command_args = {}
+
+        if not self.use_stdin:
+            command_args['infile'] = input_file.name
+
+        if self.use_stdout:
+            output_file = StringIO()
+        else:
+            output_file = NamedTemporaryFile()
+            command_args['outfile'] = output_file.name
+
+        if command_args:
+            command = self.command % command_args
+        else:
+            command = self.command
+
+        if self.use_stdin:
+            stdout, stderr = run_command(command, stdin=input_file.read())
+        else:
+            stdout, stderr = run_command(command)
+
+        if self.use_stdout:
+            output_file.write(stdout)
+
         return output_file
 
 
