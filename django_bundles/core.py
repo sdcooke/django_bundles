@@ -7,6 +7,7 @@ from django_bundles.processors import processor_library
 
 import os
 
+
 class Bundle(object):
     """
     Representation of a bundle of files - configuration looks like:
@@ -27,12 +28,13 @@ class Bundle(object):
         'bundle_file_root': settings.MEDIA_ROOT,                        # Root path for the bundle file [OPTIONAL - defaults to files_root]
         'bundle_filename': 'master_css',                                # Filename for the bundle (without extension) [OPTIONAL - defaults to the bundle name]
         'processors': (                                                 # A list of post processors for the bundle (e.g. minifying) [OPTIONAL - defaults to the default processors for the bundle type]
-            'django_bundles.processors.django_template.DjangoTemplateProcessor', # String,
-            DjangoTemplateProcessor,                                             # Class,
-            DjangoTemplateProcessor(),                                           # Instance,
-            (ExecutableProcessor, {'command':'lessc %(infile)s %(outfile)s'}),   # Class and kwargs
+            'django_bundles.processors.django_template.DjangoTemplateProcessor',                             # String,
+            DjangoTemplateProcessor,                                                                         # Class,
+            DjangoTemplateProcessor(),                                                                       # Instance,
+            (ExecutableProcessor, {'command':'lessc %(infile)s %(outfile)s'}),                               # Class and kwargs
             ('django_bundles.processors.ExecutableProcessor', {'command':'lessc %(infile)s %(outfile)s'}),   # String and kwargs
-        )
+        ),
+        'create_debug': False,                                          # create a debug bundle too (some processors won't be run)
     }),
 
     """
@@ -52,6 +54,7 @@ class Bundle(object):
         self.bundle_url_root = conf_dict.get('bundle_url_root') or files_url_root
         self.bundle_file_root = conf_dict.get('bundle_file_root') or files_root
         self.bundle_filename = conf_dict.get('bundle_filename') or self.name
+        self.create_debug = conf_dict.get('debug', False)
 
         # Build the list of BundleFiles
         self.files = []
@@ -82,11 +85,23 @@ class Bundle(object):
         """
         return get_bundle_versions().get(self.name)
 
+    def get_debug_version(self):
+        """
+        Returns the current hash for the debug version of this bundle
+        """
+        return get_bundle_versions().get('debug:' + self.name)
+
     def get_url(self):
         """
         Return the filename of the bundled bundle
         """
         return '%s.%s.%s' % (os.path.join(self.bundle_url_root, self.bundle_filename), self.get_version(), self.bundle_type)
+
+    def get_debug_url(self):
+        """
+        Return the filename of the bundled debug bundle
+        """
+        return '%s.debug.%s.%s' % (os.path.join(self.bundle_url_root, self.bundle_filename), self.get_debug_version(), self.bundle_type)
 
     def get_file_urls(self):
         """
@@ -95,6 +110,7 @@ class Bundle(object):
         if bundles_settings.USE_BUNDLES:
             return [self.get_url()]
         return [bundle_file.file_url for bundle_file in self.files]
+
 
 class BundleFile(object):
     """
@@ -135,6 +151,7 @@ class BundleFile(object):
         else:
             self.processors = processor_library.get_default_preprocessors_for(self.file_type)
 
+
 class BundleManager(object):
     """
     Kind of like an ordered dictionary, but not as complicated
@@ -174,6 +191,7 @@ def get_bundles():
 
     return _cached_bundles
 
+
 _cached_versions = None
 def get_bundle_versions():
     """
@@ -190,6 +208,7 @@ def get_bundle_versions():
         except IOError:
             _cached_versions = {}
     return _cached_versions
+
 
 def set_bundle_versions(bundles_versions):
     """

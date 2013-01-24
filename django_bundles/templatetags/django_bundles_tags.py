@@ -8,8 +8,8 @@ from django_bundles.core import get_bundles
 
 register = template.Library()
 
-@register.simple_tag
-def render_bundle(bundle_name):
+
+def _render_bundle(bundle_name, debug=False):
     """
     Renders the HTML for a bundle in place - one HTML tag or many depending on settings.USE_BUNDLES
     """
@@ -18,11 +18,16 @@ def render_bundle(bundle_name):
     except KeyError:
         raise ImproperlyConfigured("Bundle '%s' is not defined" % bundle_name)
 
+    if debug and not bundle.create_debug:
+        raise ImproperlyConfigured("Bundle '%s' does not have a debug bundle" % bundle_name)
+
     if bundles_settings.USE_BUNDLES:
         # Render one tag
-        context = {
-            'file_url': bundle.get_url(),
-        }
+        if debug:
+            context = { 'file_url': bundle.get_debug_url() }
+        else:
+            context = { 'file_url': bundle.get_url() }
+
         if bundle.media:
             context['attrs'] = { 'media': bundle.media }
         return render_to_string('django_bundles/%s.html' % bundle.bundle_type, context)
@@ -39,6 +44,17 @@ def render_bundle(bundle_name):
         bundle_files.append(render_to_string('django_bundles/%s.html' % bundle_file.file_type, context))
 
     return '\n'.join(bundle_files)
+
+
+@register.simple_tag
+def render_bundle(bundle_name):
+    return _render_bundle(bundle_name)
+
+
+@register.simple_tag
+def render_debug_bundle(bundle_name):
+    return _render_bundle(bundle_name, debug=True)
+
 
 if hasattr(register, 'assignment_tag'):
     @register.assignment_tag(name='get_bundles')

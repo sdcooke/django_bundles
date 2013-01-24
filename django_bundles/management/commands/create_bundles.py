@@ -9,16 +9,17 @@ import shutil
 from hashlib import md5
 from tempfile import NamedTemporaryFile
 
-def make_bundle(bundle):
+
+def make_bundle(bundle, debug=False):
     """
     Does all of the processing required to create a bundle and write it to disk, returning its hash version
     """
-    hash_version = None
+    hash_version=None
 
     with NamedTemporaryFile() as temp_output_file:
         for bundle_file in bundle.files:
             # Preprocess each file and copy onto temp_output_file
-            bundle_file_output = processor_pipeline(bundle_file.processors, open(bundle_file.file_path, 'rb'))
+            bundle_file_output = processor_pipeline(bundle_file.processors, open(bundle_file.file_path, 'rb'), debug=debug)
             shutil.copyfileobj(bundle_file_output, temp_output_file)
             bundle_file_output.close()
             temp_output_file.write('\n')
@@ -27,8 +28,9 @@ def make_bundle(bundle):
         temp_output_file.seek(0)
 
         # Post process the concatenated bundle
-        processed_temp_output_file = processor_pipeline(bundle.processors, temp_output_file)
+        processed_temp_output_file = processor_pipeline(bundle.processors, temp_output_file, debug=debug)
         processed_temp_output_file.seek(0)
+
         # Calculate a hash of the post processed file
         chunk_size = 2**14
         m = md5()
@@ -42,13 +44,17 @@ def make_bundle(bundle):
         processed_temp_output_file.seek(0)
 
         # Copy the file into its final location
-        output_file_name = '%s.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), hash_version, bundle.bundle_type)
+        if debug:
+            output_file_name = '%s.debug.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), hash_version, bundle.bundle_type)
+        else:
+            output_file_name = '%s.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), hash_version, bundle.bundle_type)
         with open(output_file_name, 'wb') as output_file:
             shutil.copyfileobj(processed_temp_output_file, output_file)
 
         processed_temp_output_file.close()
 
     return hash_version
+
 
 class Command(BaseCommand):
     help = "Bundles up the media"
@@ -66,6 +72,10 @@ class Command(BaseCommand):
 
             # Build bundle versions as we're going along in case they're used in templated bundles
             _bundle_versions[bundle.name] = hash_version
+
+            if bundle.create_debug:
+                _bundle_versions['debug:' + bundle.name] = make_bundle(bundle, debug=True)
+
             self.stdout.write("\t%s\n" % bundle.get_version())
 
         version_info = '\n'.join(['    "%s": "%s",' % version for version in _bundle_versions.iteritems()])

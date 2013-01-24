@@ -12,6 +12,9 @@ class Processor(object):
     """
     requires_actual_file = False # Whether this processor needs to be passed an actual file on disk or not (StringIO might be used otherwise)
 
+    def __init__(self, include_in_debug=True):
+        self.include_in_debug = include_in_debug
+
     def process_file(self, input_file):
         """
         Processes the file and returns a new file(-like) object - override this to actually do something
@@ -25,13 +28,15 @@ class ExecutableProcessor(Processor):
     """
     requires_actual_file = True
 
-    def __init__(self, command, use_stdin=False, use_stdout=False):
+    def __init__(self, command, use_stdin=False, use_stdout=False, **kwargs):
         self.command = command
         self.use_stdin = use_stdin
         self.use_stdout = use_stdout
 
         if self.use_stdin:
             self.requires_actual_file = False
+
+        super(ExecutableProcessor, self).__init__(**kwargs)
 
     def process_file(self, input_file):
         command_args = {}
@@ -87,7 +92,7 @@ def make_actual_file(input_file):
     return input_file
 
 
-def processor_pipeline(processors, start_file, require_actual_file=False):
+def processor_pipeline(processors, start_file, require_actual_file=False, debug=False):
     """
     Runs a list of processors over a file and returns a file(-like) object for the processed output
     """
@@ -95,6 +100,9 @@ def processor_pipeline(processors, start_file, require_actual_file=False):
 
     for processor in processors:
         if processor:
+            if debug and not processor.include_in_debug:
+                continue
+
             input_file.seek(0)
 
             if processor.requires_actual_file:
