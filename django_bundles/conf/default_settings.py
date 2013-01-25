@@ -19,3 +19,9 @@ BUNDLES_LINTING = {}
 BUNDLES_LINT_SUCCESS_OK = True
 
 BUNDLES_SINGLE_FILES = ()
+
+BUNDLES_TAG_HTML = {
+    'js': '<script src="%(file_url)s"></script>',
+    'css': '<link href="%(file_url)s" type="text/css" rel="stylesheet"%(attrs)s />',
+    'less': '<link href="%(file_url)s" type="text/less" rel="stylesheet"%(attrs)s />',
+}
