@@ -3,55 +3,44 @@ from django.core.management.base import BaseCommand
 from django_bundles.conf.bundles_settings import bundles_settings
 from django_bundles.core import get_bundles, set_bundle_versions
 from django_bundles.processors import processor_pipeline, processor_library
+from django_bundles.utils import FileChunkGenerator
 
 import os
-import shutil
 from hashlib import md5
-from tempfile import NamedTemporaryFile
+
+
+def iter_bundle_files(bundle, debug=False):
+    for bundle_file in bundle.files:
+        for chunk in processor_pipeline(bundle_file.processors, FileChunkGenerator(open(bundle_file.file_path, 'rb')), debug=debug):
+            yield chunk
+        yield '\n'
 
 
 def make_bundle(bundle, debug=False):
     """
     Does all of the processing required to create a bundle and write it to disk, returning its hash version
     """
-    hash_version=None
+    iter_input = iter_bundle_files(bundle, debug=debug)
 
-    with NamedTemporaryFile() as temp_output_file:
-        for bundle_file in bundle.files:
-            # Preprocess each file and copy onto temp_output_file
-            bundle_file_output = processor_pipeline(bundle_file.processors, open(bundle_file.file_path, 'rb'), debug=debug)
-            shutil.copyfileobj(bundle_file_output, temp_output_file)
-            bundle_file_output.close()
-            temp_output_file.write('\n')
+    output_pipeline = processor_pipeline(bundle.processors, iter_input, debug=debug)
 
-        # Seek back to the start to run post processors
-        temp_output_file.seek(0)
+    m = md5()
 
-        # Post process the concatenated bundle
-        processed_temp_output_file = processor_pipeline(bundle.processors, temp_output_file, debug=debug)
-        processed_temp_output_file.seek(0)
+    tmp_output_file_name = '%s.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), 'temp', bundle.bundle_type)
 
-        # Calculate a hash of the post processed file
-        chunk_size = 2**14
-        m = md5()
-        while 1:
-            chunk = processed_temp_output_file.read(chunk_size)
-            if not chunk:
-                break
+    with open(tmp_output_file_name, 'wb') as output_file:
+        for chunk in output_pipeline:
             m.update(chunk)
-        hash_version = m.hexdigest()
+            output_file.write(chunk)
 
-        processed_temp_output_file.seek(0)
+    hash_version = m.hexdigest()
 
-        # Copy the file into its final location
-        if debug:
-            output_file_name = '%s.debug.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), hash_version, bundle.bundle_type)
-        else:
-            output_file_name = '%s.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), hash_version, bundle.bundle_type)
-        with open(output_file_name, 'wb') as output_file:
-            shutil.copyfileobj(processed_temp_output_file, output_file)
+    if debug:
+        output_file_name = '%s.debug.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), hash_version, bundle.bundle_type)
+    else:
+        output_file_name = '%s.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), hash_version, bundle.bundle_type)
 
-        processed_temp_output_file.close()
+    os.rename(tmp_output_file_name, output_file_name)
 
     return hash_version
 
@@ -93,8 +82,9 @@ BUNDLES_VERSIONS = {
             self.stdout.write("Writing: %s\n" % single_file_output)
             file_type = os.path.splitext(single_file_input)[1][1:]
             processors = processor_library.get_default_preprocessors_for(file_type) + processor_library.get_default_postprocessors_for(file_type)
-            with processor_pipeline(processors, open(single_file_input, 'rb')) as temp_output:
-                with open(single_file_output, 'wb') as output_file:
-                    shutil.copyfileobj(temp_output, output_file)
+
+            with open(single_file_output, 'wb') as output_file:
+                for chunk in processor_pipeline(processors, FileChunkGenerator(open(single_file_input, 'rb'))):
+                    output_file.write(chunk)
 
         self.stdout.write("Done.\n")

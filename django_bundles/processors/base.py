@@ -1,147 +1,90 @@
 from django_bundles.conf.bundles_settings import bundles_settings
-from django_bundles.utils import run_command, get_class
+from django_bundles.utils import run_process, get_class, FileChunkGenerator, consume
 from django.core.exceptions import ImproperlyConfigured
 
-from StringIO import StringIO
 from tempfile import NamedTemporaryFile
 
 
 class Processor(object):
-    """
-    Definition of a file processor
-    """
-    requires_actual_file = False # Whether this processor needs to be passed an actual file on disk or not (StringIO might be used otherwise)
+    include_in_debug = True
 
-    def __init__(self, include_in_debug=True):
-        self.include_in_debug = include_in_debug
+    def __init__(self, **kwargs):
+        for key, value in kwargs.iteritems():
+            setattr(self, key, value)
 
-    def process_file(self, input_file):
-        """
-        Processes the file and returns a new file(-like) object - override this to actually do something
-        """
-        return input_file
+    def process(self, iter_input):
+        raise NotImplementedError
 
 
 class ExecutableProcessor(Processor):
-    """
-    A Processor that runs an external command on the file
-    """
-    requires_actual_file = True
+    command = None
 
-    def __init__(self, command, use_stdin=False, use_stdout=False, **kwargs):
-        self.command = command
-        self.use_stdin = use_stdin
-        self.use_stdout = use_stdout
+    def process(self, iter_input):
+        input_file = output_file = None
+        stdin = iter_input
+        format_kwargs = {}
 
-        if self.use_stdin:
-            self.requires_actual_file = False
+        # Create temporary files for input and output if required
+        if '{infile}' in self.command:
+            stdin = None
 
-        super(ExecutableProcessor, self).__init__(**kwargs)
+            if hasattr(iter_input, 'file_path'):
+                format_kwargs['infile'] = iter_input.file_path
+            else:
+                input_file = NamedTemporaryFile()
+                format_kwargs['infile'] = input_file.name
 
-    def process_file(self, input_file):
-        command_args = {}
+                for chunk in iter_input:
+                    input_file.write(chunk)
 
-        if not self.use_stdin:
-            command_args['infile'] = input_file.name
+                input_file.seek(0) # Not sure why this is needed
 
-        if self.use_stdout:
-            output_file = StringIO()
-        else:
+        if '{outfile}' in self.command:
             output_file = NamedTemporaryFile()
-            command_args['outfile'] = output_file.name
+            format_kwargs['outfile'] = output_file.name
 
-        if command_args:
-            command = self.command % command_args
+        command = self.command.format(**format_kwargs)
+
+
+        g = run_process(command, stdin=stdin, to_close=input_file)
+
+        if output_file:
+            consume(g)
+            return FileChunkGenerator(output_file)
         else:
-            command = self.command
-
-        if self.use_stdin:
-            stdout, stderr = run_command(command, stdin=input_file.read())
-        else:
-            stdout, stderr = run_command(command)
-
-        if self.use_stdout:
-            output_file.write(stdout)
-
-        return output_file
+            return g
 
 
-class StringProcessor(Processor):
-    """
-    Processor that acts using strings in some way - abstracts opening files etc
-    """
-    def process_string(self, input):
-        """
-        This should be overridden to do string processing
-        """
-        return input
-
-    def process_file(self, input_file):
-        output_file = StringIO()
-        output_file.write(self.process_string(input_file.read()))
-        return output_file
-
-
-def make_actual_file(input_file):
-    if not hasattr(input_file, 'name'):
-        new_input_file = NamedTemporaryFile()
-        new_input_file.write(input_file.read())
-        input_file.close()
-        input_file = new_input_file
-        input_file.seek(0)
-    return input_file
-
-
-def processor_pipeline(processors, start_file, require_actual_file=False, debug=False):
-    """
-    Runs a list of processors over a file and returns a file(-like) object for the processed output
-    """
-    input_file = start_file
+def processor_pipeline(processors, iter_input, debug=False):
+    pipeline = iter_input
 
     for processor in processors:
-        if processor:
-            if debug and not processor.include_in_debug:
-                continue
+        if not processor:
+            continue
+        if debug and not processor.include_in_debug:
+            continue
 
-            input_file.seek(0)
+        pipeline = processor.process(pipeline)
 
-            if processor.requires_actual_file:
-                input_file = make_actual_file(input_file)
-
-            output_file = processor.process_file(input_file)
-            input_file.close()
-            input_file = output_file
-
-    if require_actual_file:
-        input_file = make_actual_file(input_file)
-
-    return input_file
+    return pipeline
 
 
 class ProcessorLibrary(object):
     def get_processor(self, processor_defn):
-        """
-        Gets an instance of a processor from a string, class, instance or tuple of string/class and init args
-        """
-        if isinstance(processor_defn, Processor):
-            # instance
-            return processor_defn
+        class_path, init_kwargs = None, {}
+        if isinstance(processor_defn, basestring):
+            class_path = processor_defn
+        elif isinstance(processor_defn, (list, tuple)):
+            if len(processor_defn) == 1:
+                class_path = processor_defn[0]
+            elif len(processor_defn) == 2:
+                class_path, init_kwargs = processor_defn
 
-        if isinstance(processor_defn, tuple) and len(processor_defn) == 2:
-            # tuple
-            class_or_path, init_kwargs = processor_defn
-        else:
-            # class or path
-            class_or_path, init_kwargs = processor_defn, {}
+        if class_path:
+            processor_class = get_class(class_path)
 
-        if isinstance(class_or_path, type) and issubclass(class_or_path, Processor):
-            # class
-            return class_or_path(**init_kwargs)
-
-        processor_class = get_class(class_or_path)
-        if processor_class:
-            # path
-            return processor_class(**init_kwargs)
+            if processor_class:
+                return processor_class(**init_kwargs)
 
         raise ImproperlyConfigured("Invalid processor: %s" % repr(processor_defn))
 
