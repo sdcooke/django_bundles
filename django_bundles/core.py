@@ -49,15 +49,16 @@ class Bundle(object):
         # Basic settings and defaults
         self.bundle_type = conf_dict['type']
         files_url_root = conf_dict.get('files_url_root', settings.MEDIA_URL)
-        files_root = conf_dict.get('files_root', settings.MEDIA_ROOT)
+        self.files_root = conf_dict.get('files_root', settings.MEDIA_ROOT)
         self.media = conf_dict.get('media')
         self.bundle_url_root = conf_dict.get('bundle_url_root') or files_url_root
-        self.bundle_file_root = conf_dict.get('bundle_file_root') or files_root
+        self.bundle_file_root = conf_dict.get('bundle_file_root') or self.files_root
         self.bundle_filename = conf_dict.get('bundle_filename') or self.name
         self.create_debug = conf_dict.get('debug', False)
 
         # Build the list of BundleFiles
         self.files = []
+        self._bundle_files = {}
 
         for fileconf in list(conf_dict['files']):
             path, extra = fileconf, None
@@ -68,8 +69,10 @@ class Bundle(object):
 
             # Expand *s in filenames
             try:
-                for filename in expand_file_names(path, files_root):
-                    self.files.append(BundleFile(filename, files_root, files_url_root, self.media, self.bundle_type, extra=extra))
+                for filename in expand_file_names(path, self.files_root):
+                    bundle_file = BundleFile(filename, self.files_root, files_url_root, self.media, self.bundle_type, extra=extra)
+                    self.files.append(bundle_file)
+                    self._bundle_files[bundle_file.file_path] = bundle_file
             except OSError:
                 raise ImproperlyConfigured("Bundle %s - could not find file(s): %s" % (self.name, path))
 
@@ -78,6 +81,12 @@ class Bundle(object):
             self.processors = processor_library.get_processors(conf_dict['processors'])
         else:
             self.processors = processor_library.get_default_postprocessors_for(self.bundle_type)
+
+    def __contains__(self, filename):
+        return filename in self._bundle_files
+
+    def __getitem__(self, item):
+        return self._bundle_files[item]
 
     def get_version(self):
         """
