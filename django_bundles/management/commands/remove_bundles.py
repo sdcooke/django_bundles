@@ -6,6 +6,7 @@ from django_bundles.core import get_bundles, get_bundle_versions
 
 class Command(BaseCommand):
     help = "Removes any created bundles"
+    requires_model_validation = False
 
     def handle(self, *args, **options):
 
