@@ -29,6 +29,7 @@ class Command(BaseCommand):
             help='Watch files for changes'
         ),
     )
+    requires_model_validation = False
 
     def lint_file(self, bundle_type, file_path, iter_input=None):
         command = bundles_settings.BUNDLES_LINTING[bundle_type]['command']
