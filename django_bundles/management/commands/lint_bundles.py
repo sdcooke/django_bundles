@@ -22,6 +22,7 @@ class Command(BaseCommand):
             help='Simple pattern matching for files',
         ),
     )
+    requires_model_validation = False
 
     def lint_file(self, filename, bundle_type, bundle_path):
         stdout, stderr = run_command(bundles_settings.BUNDLES_LINTING[bundle_type]['command'] % {
