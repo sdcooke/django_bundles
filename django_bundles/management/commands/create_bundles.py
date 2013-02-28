@@ -47,6 +47,7 @@ def make_bundle(bundle, debug=False):
 
 class Command(BaseCommand):
     help = "Bundles up the media"
+    requires_model_validation = False
 
     def handle(self, *args, **options):
         self.stdout.write("Bundling...\n")
