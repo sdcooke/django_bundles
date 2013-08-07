@@ -62,7 +62,7 @@ If you define a `BUNDLES_LINTING` setting you can use the `lint_bundles` managem
 ```python
 BUNDLES_LINTING = {
     'js': {
-        'command': '/path/to/jslint/bin/jslint.js %(infile)s',
+        'command': '/path/to/jslint/bin/jslint.js {infile}',
         'default': True,
     },
 }

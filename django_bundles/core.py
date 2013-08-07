@@ -31,8 +31,8 @@ class Bundle(object):
             'django_bundles.processors.django_template.DjangoTemplateProcessor',                             # String,
             DjangoTemplateProcessor,                                                                         # Class,
             DjangoTemplateProcessor(),                                                                       # Instance,
-            (ExecutableProcessor, {'command':'lessc %(infile)s %(outfile)s'}),                               # Class and kwargs
-            ('django_bundles.processors.ExecutableProcessor', {'command':'lessc %(infile)s %(outfile)s'}),   # String and kwargs
+            (ExecutableProcessor, {'command':'lessc {infile} {outfile}'}),                               # Class and kwargs
+            ('django_bundles.processors.ExecutableProcessor', {'command':'lessc {infile} {outfile}'}),   # String and kwargs
         ),
         'debug': False,                                                 # create a debug bundle too (some processors won't be run)
     }),
