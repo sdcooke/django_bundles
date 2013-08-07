@@ -1,5 +1,4 @@
 from django import template
-from django.template.loader import render_to_string
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -8,8 +7,19 @@ from django_bundles.core import get_bundles
 
 register = template.Library()
 
-@register.simple_tag
-def render_bundle(bundle_name):
+
+def _render_file(file_type, file_url, attrs=None):
+    attr_string = ''
+    if attrs:
+        attr_string = ''.join(' %s="%s"' % x for x in attrs.iteritems())
+
+    return bundles_settings.BUNDLES_TAG_HTML[file_type] % {
+        'file_url': file_url,
+        'attrs': attr_string,
+    }
+
+
+def _render_bundle(bundle_name, debug=False):
     """
     Renders the HTML for a bundle in place - one HTML tag or many depending on settings.USE_BUNDLES
     """
@@ -18,27 +28,30 @@ def render_bundle(bundle_name):
     except KeyError:
         raise ImproperlyConfigured("Bundle '%s' is not defined" % bundle_name)
 
+    if debug and not bundle.create_debug:
+        raise ImproperlyConfigured("Bundle '%s' does not have a debug bundle" % bundle_name)
+
     if bundles_settings.USE_BUNDLES:
-        # Render one tag
-        context = {
-            'file_url': bundle.get_url(),
-        }
-        if bundle.media:
-            context['attrs'] = { 'media': bundle.media }
-        return render_to_string('django_bundles/%s.html' % bundle.bundle_type, context)
+        return _render_file(bundle.bundle_type, bundle.get_debug_url() if debug else bundle.get_url(), attrs=({'media':bundle.media} if bundle.media else {}))
 
     # Render files individually
     bundle_files = []
 
     for bundle_file in bundle.files:
-        context = {
-            'file_url': bundle_file.file_url
-        }
-        if bundle_file.media:
-            context['attrs'] = { 'media': bundle_file.media, }
-        bundle_files.append(render_to_string('django_bundles/%s.html' % bundle_file.file_type, context))
+        bundle_files.append(_render_file(bundle_file.file_type, bundle_file.file_url, attrs=({'media':bundle_file.media} if bundle.media else {})))
 
     return '\n'.join(bundle_files)
+
+
+@register.simple_tag
+def render_bundle(bundle_name):
+    return _render_bundle(bundle_name)
+
+
+@register.simple_tag
+def render_debug_bundle(bundle_name):
+    return _render_bundle(bundle_name, debug=True)
+
 
 @register.assignment_tag(name='get_bundles')
 def do_get_bundles():

@@ -52,8 +52,6 @@ The `{% render_bundle bundle_name %}` template tag can then be used to render th
 
 Other settings are (check out django_bundles/conf/default_settings.py):
 
-* `BUNDLES_LESS_COMMAND` - e.g. `"/path/to/bin/lessc %(infile)s %(outfile)s"`
-* `BUNDLES_UGLIFY_COMMAND` (like `BUNDLES_LESS_COMMAND`)
 * `DEFAULT_PREPROCESSORS` - dict of file type to list of processors (default is LessCSS for .less files)
 * `DEFAULT_POSTPROCESSORS` - dict of bundle type to list of processors (default is UglifyJS for .js bundles)
 
@@ -64,7 +62,7 @@ If you define a `BUNDLES_LINTING` setting you can use the `lint_bundles` managem
 ```python
 BUNDLES_LINTING = {
     'js': {
-        'command': '/path/to/jslint/bin/jslint.js %(infile)s',
+        'command': '/path/to/jslint/bin/jslint.js {infile}',
         'default': True,
     },
 }

@@ -2,3 +2,5 @@
 *.*~
 .idea/*
 ._*
+dist/*
+django_bundles.egg-info/*

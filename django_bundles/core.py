@@ -2,10 +2,11 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
 from django_bundles.conf.bundles_settings import bundles_settings
-from django_bundles.utils import expand_file_names
+from django_bundles.utils.files import expand_file_names
 from django_bundles.processors import processor_library
 
 import os
+
 
 class Bundle(object):
     """
@@ -27,10 +28,13 @@ class Bundle(object):
         'bundle_file_root': settings.MEDIA_ROOT,                        # Root path for the bundle file [OPTIONAL - defaults to files_root]
         'bundle_filename': 'master_css',                                # Filename for the bundle (without extension) [OPTIONAL - defaults to the bundle name]
         'processors': (                                                 # A list of post processors for the bundle (e.g. minifying) [OPTIONAL - defaults to the default processors for the bundle type]
-            'django_bundles.contrib.processors.uglify.UglifyProcessor', # String,
-            UglifyProcessor,                                            # Class,
-            UglifyProcessor(),                                          # ...or instance
-        )
+            'django_bundles.processors.django_template.DjangoTemplateProcessor',                             # String,
+            DjangoTemplateProcessor,                                                                         # Class,
+            DjangoTemplateProcessor(),                                                                       # Instance,
+            (ExecutableProcessor, {'command':'lessc {infile} {outfile}'}),                               # Class and kwargs
+            ('django_bundles.processors.ExecutableProcessor', {'command':'lessc {infile} {outfile}'}),   # String and kwargs
+        ),
+        'debug': False,                                                 # create a debug bundle too (some processors won't be run)
     }),
 
     """
@@ -45,16 +49,18 @@ class Bundle(object):
         # Basic settings and defaults
         self.bundle_type = conf_dict['type']
         files_url_root = conf_dict.get('files_url_root', settings.MEDIA_URL)
-        files_root = conf_dict.get('files_root', settings.MEDIA_ROOT)
+        self.files_root = conf_dict.get('files_root', settings.MEDIA_ROOT)
         self.media = conf_dict.get('media')
         self.bundle_url_root = conf_dict.get('bundle_url_root') or files_url_root
-        self.bundle_file_root = conf_dict.get('bundle_file_root') or files_root
+        self.bundle_file_root = conf_dict.get('bundle_file_root') or self.files_root
         self.bundle_filename = conf_dict.get('bundle_filename') or self.name
+        self.create_debug = conf_dict.get('debug', False)
 
         # Build the list of BundleFiles
         self.files = []
+        self._bundle_files = {}
 
-        for fileconf in conf_dict['files']:
+        for fileconf in list(conf_dict['files']):
             path, extra = fileconf, None
             # Each file definition can be a string or tuple containing the path and the conf dict
             if isinstance(fileconf, (tuple, list)):
@@ -63,8 +69,10 @@ class Bundle(object):
 
             # Expand *s in filenames
             try:
-                for filename in expand_file_names(path, files_root):
-                    self.files.append(BundleFile(filename, files_root, files_url_root, self.media, self.bundle_type, extra=extra))
+                for filename in expand_file_names(path, self.files_root):
+                    bundle_file = BundleFile(filename, self.files_root, files_url_root, self.media, self.bundle_type, extra=extra)
+                    self.files.append(bundle_file)
+                    self._bundle_files[bundle_file.file_path] = bundle_file
             except OSError:
                 raise ImproperlyConfigured("Bundle %s - could not find file(s): %s" % (self.name, path))
 
@@ -74,17 +82,35 @@ class Bundle(object):
         else:
             self.processors = processor_library.get_default_postprocessors_for(self.bundle_type)
 
+    def __contains__(self, filename):
+        return filename in self._bundle_files
+
+    def __getitem__(self, item):
+        return self._bundle_files[item]
+
     def get_version(self):
         """
         Returns the current hash for this bundle
         """
         return get_bundle_versions().get(self.name)
 
+    def get_debug_version(self):
+        """
+        Returns the current hash for the debug version of this bundle
+        """
+        return get_bundle_versions().get('debug:' + self.name)
+
     def get_url(self):
         """
         Return the filename of the bundled bundle
         """
         return '%s.%s.%s' % (os.path.join(self.bundle_url_root, self.bundle_filename), self.get_version(), self.bundle_type)
+
+    def get_debug_url(self):
+        """
+        Return the filename of the bundled debug bundle
+        """
+        return '%s.debug.%s.%s' % (os.path.join(self.bundle_url_root, self.bundle_filename), self.get_debug_version(), self.bundle_type)
 
     def get_file_urls(self):
         """
@@ -93,6 +119,7 @@ class Bundle(object):
         if bundles_settings.USE_BUNDLES:
             return [self.get_url()]
         return [bundle_file.file_url for bundle_file in self.files]
+
 
 class BundleFile(object):
     """
@@ -133,6 +160,7 @@ class BundleFile(object):
         else:
             self.processors = processor_library.get_default_preprocessors_for(self.file_type)
 
+
 class BundleManager(object):
     """
     Kind of like an ordered dictionary, but not as complicated
@@ -172,6 +200,7 @@ def get_bundles():
 
     return _cached_bundles
 
+
 _cached_versions = None
 def get_bundle_versions():
     """
@@ -188,6 +217,7 @@ def get_bundle_versions():
         except IOError:
             _cached_versions = {}
     return _cached_versions
+
 
 def set_bundle_versions(bundles_versions):
     """
