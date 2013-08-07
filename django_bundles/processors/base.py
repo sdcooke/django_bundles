@@ -48,7 +48,6 @@ class ExecutableProcessor(Processor):
 
         command = self.command.format(**format_kwargs)
 
-
         g = run_process(command, stdin=stdin, to_close=input_file)
 
         if output_file:
