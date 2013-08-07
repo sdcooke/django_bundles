@@ -1,8 +1,11 @@
 from django_bundles.conf.bundles_settings import bundles_settings
-from django_bundles.utils import run_process, get_class, FileChunkGenerator, consume
+from django_bundles.utils import get_class
+from django_bundles.utils.files import FileChunkGenerator
+from django_bundles.utils.processes import run_process
 from django.core.exceptions import ImproperlyConfigured
 
 from tempfile import NamedTemporaryFile
+import collections
 
 
 class Processor(object):
@@ -49,7 +52,8 @@ class ExecutableProcessor(Processor):
         g = run_process(command, stdin=stdin, to_close=input_file)
 
         if output_file:
-            consume(g)
+            # Consume the iterator into a zero length deque
+            collections.deque(g, maxlen=0)
             return FileChunkGenerator(output_file)
         else:
             return g

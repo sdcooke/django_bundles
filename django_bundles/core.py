@@ -2,7 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
 from django_bundles.conf.bundles_settings import bundles_settings
-from django_bundles.utils import expand_file_names
+from django_bundles.utils.files import expand_file_names
 from django_bundles.processors import processor_library
 
 import os
@@ -34,7 +34,7 @@ class Bundle(object):
             (ExecutableProcessor, {'command':'lessc %(infile)s %(outfile)s'}),                               # Class and kwargs
             ('django_bundles.processors.ExecutableProcessor', {'command':'lessc %(infile)s %(outfile)s'}),   # String and kwargs
         ),
-        'create_debug': False,                                          # create a debug bundle too (some processors won't be run)
+        'debug': False,                                                 # create a debug bundle too (some processors won't be run)
     }),
 
     """

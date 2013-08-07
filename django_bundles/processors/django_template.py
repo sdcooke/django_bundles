@@ -3,7 +3,6 @@ from django.template import Context, Template
 
 from django_bundles.core import get_bundles
 from django_bundles.processors.base import Processor
-from django_bundles.utils import concat
 
 
 class DjangoTemplateProcessor(Processor):
@@ -21,6 +20,6 @@ class DjangoTemplateProcessor(Processor):
             }
 
     def process(self, iter_input):
-        template = Template(concat(iter_input))
+        template = Template(''.join(iter_input))
         yield template.render(Context(self.get_context()))
 

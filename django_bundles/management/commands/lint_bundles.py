@@ -3,10 +3,12 @@ from django.core.management.base import BaseCommand, CommandError
 
 from django_bundles.core import get_bundles
 from django_bundles.processors import processor_pipeline
-from django_bundles.utils import run_process, consume, FileChunkGenerator
+from django_bundles.utils.files import FileChunkGenerator
+from django_bundles.utils.processes import run_process
 from django_bundles.conf.bundles_settings import bundles_settings
 
 from optparse import make_option
+import collections
 
 import os
 from tempfile import NamedTemporaryFile
@@ -58,7 +60,8 @@ class Command(BaseCommand):
                 stdin = input_file = open(file_path, 'rb')
 
         try:
-            consume(run_process(command, stdin=stdin, to_close=input_file))
+            # Consume the iterator into a zero length deque
+            collections.deque(run_process(command, stdin=stdin, to_close=input_file), maxlen=0)
         except CalledProcessError as e:
             return False, e.output
 

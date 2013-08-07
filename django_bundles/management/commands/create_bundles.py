@@ -3,7 +3,7 @@ from django.core.management.base import BaseCommand
 from django_bundles.conf.bundles_settings import bundles_settings
 from django_bundles.core import get_bundles, set_bundle_versions
 from django_bundles.processors import processor_pipeline, processor_library
-from django_bundles.utils import FileChunkGenerator
+from django_bundles.utils.files import FileChunkGenerator
 
 import os
 from hashlib import md5

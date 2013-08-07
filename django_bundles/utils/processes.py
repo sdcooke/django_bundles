@@ -1,83 +1,10 @@
-import shlex
 import subprocess
-import os
-import fnmatch
-import select
 import errno
-from operator import add
+import select
+import os
 
 
 _PIPE_BUF = getattr(select, 'PIPE_BUF', 512)
-
-
-def run_command(cmd, stdin=None):
-    """
-    Runs a command - including commands with pipes - and returns (stdout, stderr)
-    """
-    splitcmd = cmd.split('|')
-    cmds = [subprocess.Popen(shlex.split(splitcmd[0]), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)]
-    for i, c in enumerate(splitcmd[1:]):
-        cmds.append(subprocess.Popen(shlex.split(c), stdin=cmds[i - 1].stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE))
-    return cmds[-1].communicate(stdin)
-
-
-def get_class(class_string):
-    """
-    Get a class from a dotted string
-    """
-    split_string = class_string.encode('ascii').split('.')
-    import_path = '.'.join(split_string[:-1])
-    class_name = split_string[-1]
-
-    if class_name:
-        try:
-            if import_path:
-                mod = __import__(import_path, globals(), {}, [class_name])
-                cls = getattr(mod, class_name)
-            else:
-                cls = __import__(class_name, globals(), {})
-            if cls:
-                return cls
-        except (ImportError, AttributeError):
-            pass
-
-    return None
-
-def expand_file_names(path, files_root):
-    """
-    Expands paths (e.g. css/*.css in files_root /actual/path/to/css/files/)
-    """
-    dir_path, filename = os.path.split(path)
-    return [os.path.join(dir_path, f) for f in fnmatch.filter(os.listdir(os.path.join(files_root, dir_path)), filename)]
-
-
-def concat(iterable):
-    return reduce(add, iterable, '')
-
-
-def consume(iterable):
-    for _ in iterable:
-        pass
-
-
-
-class FileChunkGenerator(object):
-    def __init__(self, input_file, chunk_size=1024, close=True):
-        self.input_file = input_file
-        self.chunk_size = chunk_size
-        self.close = close
-        self.file_path = input_file.name
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        chunk = self.input_file.read(self.chunk_size)
-        if chunk == '':
-            if self.close:
-                self.input_file.close()
-            raise StopIteration
-        return chunk
 
 
 def run_process(cmd, stdin=None, iterate_stdin=True, output_chunk_size=1024, shell=True, to_close=None):
