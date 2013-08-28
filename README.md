@@ -6,6 +6,8 @@ There are ideas taken from a lot of the other media bundlers - none of them work
 
 I think Django 1.4 is required, but possibly only because of the assignment tag decorator used.
 
+IMPORTANT NOTE: 0.3.0 is not backwards compatible with 0.2.5
+
 ## Features
 
 * Pre and post processing of files (e.g. LessCSS, UglifyJS) - really easy to add others
@@ -40,7 +42,7 @@ BUNDLES = (
             'script_loader_example.js',
         ),
         'processors': (
-            'django_bundles.contrib.processors.django_template.DjangoTemplateProcessor',
+            'django_bundles.processors.django_template.DjangoTemplateProcessor',
         )
     }),
 )
