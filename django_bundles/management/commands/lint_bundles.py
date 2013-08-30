@@ -173,6 +173,18 @@ class Command(BaseCommand):
         files_linted = set()
 
         failures = 0
+
+        def file_checked(success, error_message, file_path):
+            if success:
+                if self.show_successes:
+                    self.stdout.write(self.style.HTTP_SUCCESS('OK\t\t%s\n' % file_path))
+            else:
+                failures += 1
+                self.stdout.write(self.style.HTTP_SERVER_ERROR('FAIL\t\t%s\n' % file_path))
+                self.stdout.write(self.style.HTTP_SERVER_ERROR(error_message))
+
+            files_linted.add(file_path)
+
         for bundle in get_bundles():
             for bundle_file in bundle.files:
                 if file_pattern and file_pattern not in bundle_file.file_path:
@@ -184,18 +196,13 @@ class Command(BaseCommand):
 
                 success, error_message = self.lint_file(bundle.bundle_type, bundle_file.file_path, iter_input=processor_pipeline(bundle_file.processors, FileChunkGenerator(open(bundle_file.file_path, 'rb'))))
 
-                if success:
-                    if self.show_successes:
-                        self.stdout.write(self.style.HTTP_SUCCESS('OK\t\t%s\n' % bundle_file.file_path))
-                else:
-                    failures += 1
-                    self.stdout.write(self.style.HTTP_SERVER_ERROR('FAIL\t\t%s\n' % bundle_file.file_path))
-                    self.stdout.write(self.style.HTTP_SERVER_ERROR(error_message))
+                file_checked(success, error_message, bundle_file.file_path)
 
-                files_linted.add(bundle_file.file_path)
 
         for single_file_path, _ in bundles_settings.BUNDLES_SINGLE_FILES:
-            failures += self.lint_file(single_file_path, os.path.splitext(single_file_path)[1][1:], single_file_path)
+            success, error_message = self.lint_file(os.path.splitext(single_file_path)[1][1:], single_file_path)
+            file_checked(success, error_message, single_file_path)
+
 
         if failures:
             raise CommandError('%s FILE%s FAILED' % (failures, 'S' if failures > 1 else ''))
