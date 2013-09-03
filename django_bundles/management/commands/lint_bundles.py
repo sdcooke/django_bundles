@@ -175,15 +175,17 @@ class Command(BaseCommand):
         failures = 0
 
         def file_checked(success, error_message, file_path):
+            files_linted.add(file_path)
+
             if success:
                 if self.show_successes:
                     self.stdout.write(self.style.HTTP_SUCCESS('OK\t\t%s\n' % file_path))
+                return 0
             else:
-                failures += 1
                 self.stdout.write(self.style.HTTP_SERVER_ERROR('FAIL\t\t%s\n' % file_path))
                 self.stdout.write(self.style.HTTP_SERVER_ERROR(error_message))
+                return 1
 
-            files_linted.add(file_path)
 
         for bundle in get_bundles():
             for bundle_file in bundle.files:
@@ -196,12 +198,12 @@ class Command(BaseCommand):
 
                 success, error_message = self.lint_file(bundle.bundle_type, bundle_file.file_path, iter_input=processor_pipeline(bundle_file.processors, FileChunkGenerator(open(bundle_file.file_path, 'rb'))))
 
-                file_checked(success, error_message, bundle_file.file_path)
+                failures += file_checked(success, error_message, bundle_file.file_path)
 
 
         for single_file_path, _ in bundles_settings.BUNDLES_SINGLE_FILES:
             success, error_message = self.lint_file(os.path.splitext(single_file_path)[1][1:], single_file_path)
-            file_checked(success, error_message, single_file_path)
+            failures += file_checked(success, error_message, single_file_path)
 
 
         if failures:
