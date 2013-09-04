@@ -6,8 +6,13 @@ def expand_file_names(path, files_root):
     """
     Expands paths (e.g. css/*.css in files_root /actual/path/to/css/files/)
     """
-    dir_path, filename = os.path.split(path)
-    return [os.path.join(dir_path, f) for f in fnmatch.filter(os.listdir(os.path.join(files_root, dir_path)), filename)]
+    # For non-wildcards just return the path. This allows us to detect when
+    # explicitly listed files are missing.
+    if not any(wildcard in path for wildcard in '*?['):
+        return [path]
+    else:
+        dir_path, filename = os.path.split(path)
+        return [os.path.join(dir_path, f) for f in fnmatch.filter(os.listdir(os.path.join(files_root, dir_path)), filename)]
 
 
 class FileChunkGenerator(object):
