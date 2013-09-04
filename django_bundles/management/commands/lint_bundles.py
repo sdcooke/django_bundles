@@ -191,9 +191,17 @@ class Command(BaseCommand):
             for bundle_file in bundle.files:
                 if file_pattern and file_pattern not in bundle_file.file_path:
                     continue
-                if not bundle_file.lint:
-                    continue
                 if bundle_file.file_path in files_linted:
+                    continue
+
+                # Check the file exists, even for non-linted files
+                if not os.path.exists(bundle_file.file_path):
+                    self.stdout.write(self.style.HTTP_SERVER_ERROR('FAIL\t\t%s\n' % bundle_file.file_path))
+                    self.stdout.write(self.style.HTTP_SERVER_ERROR('File does not exist (referenced from %s)\n' % bundle.name))
+                    failures += 1
+                    continue
+
+                if not bundle_file.lint:
                     continue
 
                 success, error_message = self.lint_file(bundle.bundle_type, bundle_file.file_path, iter_input=processor_pipeline(bundle_file.processors, FileChunkGenerator(open(bundle_file.file_path, 'rb'))))
