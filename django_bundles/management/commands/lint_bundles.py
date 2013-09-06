@@ -119,7 +119,7 @@ class Command(BaseCommand):
                 from watchdog.events import FileSystemEventHandler
                 import curses
             except ImportError:
-                raise CommandError('watchdog is required for this (pip install watchdog')
+                raise CommandError('watchdog is required for this (pip install watchdog)')
 
             self.errored_files = {}
             self.log_lines = []
@@ -144,7 +144,7 @@ class Command(BaseCommand):
                     if not event.is_directory:
                         check_and_lint_file(event.src_path)
 
-            # TODO: watchdog dirsnapshot line 97 patched (otherwise it doesn't work with PyCharm)
+            # TODO: watchdog dirsnapshot patched (otherwise it doesn't work with PyCharm)
             #        #if stat_info.st_ino == ref_stat_info.st_ino and stat_info.st_mtime != ref_stat_info.st_mtime:
             #        if stat_info.st_mtime != ref_stat_info.st_mtime:
 
