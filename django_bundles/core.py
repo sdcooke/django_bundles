@@ -14,6 +14,7 @@ class Bundle(object):
 
     ('master_css', {                                                    # bundle name
         'type': 'css',                                                  # bundle type (e.g. css, js) - also the bundle file extension
+        'uglify_command': None                                          # special case to create a source map from uglify (this bypasses other post processors)
         'files': (                                                      # list of files to include
             'css/*.css',                                                # pattern matching is done
             ('css/more/test3.css', {
@@ -48,10 +49,11 @@ class Bundle(object):
 
         # Basic settings and defaults
         self.bundle_type = conf_dict['type']
-        files_url_root = conf_dict.get('files_url_root', settings.MEDIA_URL)
+        self.uglify_command = conf_dict.get('uglify_command')
+        self.files_url_root = conf_dict.get('files_url_root', settings.MEDIA_URL)
         self.files_root = conf_dict.get('files_root', settings.MEDIA_ROOT)
         self.media = conf_dict.get('media')
-        self.bundle_url_root = conf_dict.get('bundle_url_root') or files_url_root
+        self.bundle_url_root = conf_dict.get('bundle_url_root') or self.files_url_root
         self.bundle_file_root = conf_dict.get('bundle_file_root') or self.files_root
         self.bundle_filename = conf_dict.get('bundle_filename') or self.name
         self.create_debug = conf_dict.get('debug', False)
@@ -70,7 +72,7 @@ class Bundle(object):
             # Expand *s in filenames
             try:
                 for filename in expand_file_names(path, self.files_root):
-                    bundle_file = BundleFile(filename, self.files_root, files_url_root, self.media, self.bundle_type, extra=extra)
+                    bundle_file = BundleFile(filename, self.files_root, self.files_url_root, self.media, self.bundle_type, extra=extra)
                     self.files.append(bundle_file)
                     self._bundle_files[bundle_file.file_path] = bundle_file
             except OSError:
@@ -100,11 +102,11 @@ class Bundle(object):
         """
         return get_bundle_versions().get('debug:' + self.name)
 
-    def get_url(self):
+    def get_url(self, version=None):
         """
         Return the filename of the bundled bundle
         """
-        return '%s.%s.%s' % (os.path.join(self.bundle_url_root, self.bundle_filename), self.get_version(), self.bundle_type)
+        return '%s.%s.%s' % (os.path.join(self.bundle_url_root, self.bundle_filename), version or self.get_version(), self.bundle_type)
 
     def get_debug_url(self):
         """

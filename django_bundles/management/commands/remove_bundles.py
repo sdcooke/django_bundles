@@ -21,6 +21,12 @@ class Command(BaseCommand):
             except:
                 self.stderr.write("Could not remove bundle: %s\n" % bundle_path)
 
+            if bundle.uglify_command:
+                try:
+                    os.remove('%s.map' % bundle_path)
+                except:
+                    self.stderr.write("Could not remove bundle source map: %s.map\n" % bundle_path)
+
             if bundle.create_debug:
                 debug_hash_version = bundle_versions['debug:' + bundle.name]
 
