@@ -7,6 +7,7 @@ from django_bundles.utils.files import FileChunkGenerator
 from django_bundles.utils.processes import run_process
 
 import os
+import collections
 from hashlib import md5
 from tempfile import NamedTemporaryFile
 
@@ -18,52 +19,69 @@ def iter_bundle_files(bundle, debug=False):
         yield '\n'
 
 
+def make_uglify_bundle(bundle, debug=False):
+    m = md5()
+
+    infile_list = []
+    source_map_processed_input_files = []
+
+    try:
+        for bundle_file in bundle.files:
+            if bundle_file.processors:
+                # for now preprocessed files are written to temp files and therefore won't be available in the source map
+                output_pipeline = processor_pipeline(bundle_file.processors, FileChunkGenerator(open(bundle_file.file_path, 'rb')), debug=debug)
+                tmp_input_file = NamedTemporaryFile()
+                source_map_processed_input_files.append(tmp_input_file)
+                for chunk in output_pipeline:
+                    m.update(chunk)
+                    tmp_input_file.write(chunk)
+                tmp_input_file.seek(0)
+                infile_list.append(tmp_input_file.name)
+            else:
+                for chunk in FileChunkGenerator(open(bundle_file.file_path, 'rb')):
+                    m.update(chunk)
+                infile_list.append(bundle_file.file_path)
+
+        hash_version = m.hexdigest()
+
+        if debug:
+            output_file_name = '%s.debug.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), hash_version, bundle.bundle_type)
+        else:
+            output_file_name = '%s.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), hash_version, bundle.bundle_type)
+
+        source_map_options = [
+            '--source-map %s.map' % output_file_name,
+            '--source-map-root %s' % bundle.files_url_root,
+            '--source-map-url %s.map' % bundle.get_url(version=hash_version),
+            '-p %s' % os.path.realpath(bundle.files_root).count('/'),
+            '-o %s' % output_file_name,
+        ]
+
+        # Consume the iterator into a zero length deque
+        collections.deque(run_process(bundle.uglify_command.format(infile_list=' '.join(infile_list), source_map_options=' '.join(source_map_options))), maxlen=0)
+    finally:
+        for tmp_input_file in source_map_processed_input_files:
+            tmp_input_file.close()
+
+    return hash_version
+
+
 def make_bundle(bundle, debug=False):
     """
     Does all of the processing required to create a bundle and write it to disk, returning its hash version
     """
     tmp_output_file_name = '%s.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), 'temp', bundle.bundle_type)
-    tmp_source_map_url = bundle.get_url()
-    tmp_source_map_processed_files = []
 
-    try:
-        if bundle.uglify_command:
-            infile_list = []
+    iter_input = iter_bundle_files(bundle, debug=debug)
 
-            for bundle_file in bundle.files:
-                if bundle_file.processors:
-                    # for now preprocessed files are written to temp files and therefore won't be available in the source map
-                    output_pipeline = processor_pipeline(bundle_file.processors, FileChunkGenerator(open(bundle_file.file_path, 'rb')), debug=debug)
-                    tmp_input_file = NamedTemporaryFile()
-                    tmp_source_map_processed_files.append(tmp_input_file)
-                    for chunk in output_pipeline:
-                        tmp_input_file.write(chunk)
-                    tmp_input_file.seek(0)
-                    infile_list.append(tmp_input_file.name)
-                else:
-                    infile_list.append(bundle_file.file_path)
+    output_pipeline = processor_pipeline(bundle.processors, iter_input, debug=debug)
 
-            source_map_options = [
-                '--source-map %s.map' % tmp_output_file_name,
-                '--source-map-root %s' % bundle.files_url_root,
-                '--source-map-url %s.map' % tmp_source_map_url,
-                '-p %s' % os.path.realpath(bundle.files_root).count('/')
-            ]
-            output_pipeline = run_process(bundle.uglify_command.format(infile_list=' '.join(infile_list), source_map_options=' '.join(source_map_options)))
-        else:
-            iter_input = iter_bundle_files(bundle, debug=debug)
+    m = md5()
 
-            output_pipeline = processor_pipeline(bundle.processors, iter_input, debug=debug)
-
-        m = md5()
-
-        with open(tmp_output_file_name, 'wb') as output_file:
-            for chunk in output_pipeline:
-                m.update(chunk)
-                output_file.write(chunk)
-    finally:
-        for tmp_input_file in tmp_source_map_processed_files:
-            tmp_input_file.close()
+    with open(tmp_output_file_name, 'wb') as output_file:
+        for chunk in output_pipeline:
+            m.update(chunk)
+            output_file.write(chunk)
 
     hash_version = m.hexdigest()
 
@@ -72,19 +90,7 @@ def make_bundle(bundle, debug=False):
     else:
         output_file_name = '%s.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), hash_version, bundle.bundle_type)
 
-    if bundle.uglify_command:
-        source_map_line = '//# sourceMappingURL=%s.map' % tmp_source_map_url
-        with open(tmp_output_file_name, 'rb') as input_file:
-            with open(output_file_name, 'wb') as output_file:
-                for l in input_file:
-                    if l == source_map_line:
-                        output_file.write('//# sourceMappingURL=%s.map' % bundle.get_url(version=hash_version))
-                    else:
-                        output_file.write(l)
-        os.remove(tmp_output_file_name)
-        os.rename(tmp_output_file_name + '.map', output_file_name + '.map')
-    else:
-        os.rename(tmp_output_file_name, output_file_name)
+    os.rename(tmp_output_file_name, output_file_name)
 
     return hash_version
 
@@ -102,13 +108,19 @@ class Command(BaseCommand):
         for bundle in get_bundles():
             self.stdout.write("Writing bundle: %s\n" % bundle.name)
 
-            hash_version = make_bundle(bundle)
+            if bundle.uglify_command:
+                hash_version = make_uglify_bundle(bundle)
+            else:
+                hash_version = make_bundle(bundle)
 
             # Build bundle versions as we're going along in case they're used in templated bundles
             _bundle_versions[bundle.name] = hash_version
 
             if bundle.create_debug:
-                _bundle_versions['debug:' + bundle.name] = make_bundle(bundle, debug=True)
+                if bundle.uglify_command:
+                    _bundle_versions['debug:' + bundle.name] = make_uglify_bundle(bundle, debug=True)
+                else:
+                    _bundle_versions['debug:' + bundle.name] = make_bundle(bundle, debug=True)
 
             self.stdout.write("\t%s\n" % bundle.get_version())
 
