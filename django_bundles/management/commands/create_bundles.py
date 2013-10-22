@@ -44,15 +44,21 @@ def make_uglify_bundle(bundle, debug=False):
 
         hash_version = m.hexdigest()
 
-        if debug:
-            output_file_name = '%s.debug.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), hash_version, bundle.bundle_type)
+        debug_part = '.debug' if debug else ''
+
+        output_file_name = '%s%s.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), debug_part, hash_version, bundle.bundle_type)
+        if bundle.source_map_file_root and bundle.source_map_url_root:
+            source_map_file_name = '%s%s.%s.%s.map' % (os.path.join(bundle.source_map_file_root, bundle.bundle_filename), debug_part, hash_version, bundle.bundle_type)
+            source_map_url = '%s.%s.%s.map' % (os.path.join(bundle.source_map_url_root, bundle.bundle_filename), hash_version, bundle.bundle_type)
         else:
-            output_file_name = '%s.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), hash_version, bundle.bundle_type)
+            source_map_file_name = output_file_name + '.map'
+            source_map_url = bundle.get_url(version=hash_version) + '.map'
+
 
         source_map_options = [
-            '--source-map %s.map' % output_file_name,
-            '--source-map-root %s' % bundle.files_url_root,
-            '--source-map-url %s.map' % bundle.get_url(version=hash_version),
+            '--source-map %s' % source_map_file_name,
+            '--source-map-root %s' % bundle.source_map_files_url_root,
+            '--source-map-url %s' % source_map_url,
             '-p %s' % os.path.realpath(bundle.files_root).count('/'),
             '-o %s' % output_file_name,
         ]

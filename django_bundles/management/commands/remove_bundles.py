@@ -23,7 +23,10 @@ class Command(BaseCommand):
 
             if bundle.uglify_command:
                 try:
-                    os.remove('%s.map' % bundle_path)
+                    if bundle.source_map_file_root and bundle.source_map_url_root:
+                        os.remove('%s.%s.%s.map' % (os.path.join(bundle.source_map_file_root, bundle.bundle_filename), hash_version, bundle.bundle_type))
+                    else:
+                        os.remove('%s.map' % bundle_path)
                 except:
                     self.stderr.write("Could not remove bundle source map: %s.map\n" % bundle_path)
 

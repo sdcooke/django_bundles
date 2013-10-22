@@ -14,7 +14,10 @@ class Bundle(object):
 
     ('master_css', {                                                    # bundle name
         'type': 'css',                                                  # bundle type (e.g. css, js) - also the bundle file extension
-        'uglify_command': None                                          # special case to create a source map from uglify (this bypasses other post processors)
+        'uglify_command': None,                                         # special case to create a source map from uglify (this bypasses other post processors)
+        'source_map_file_root': None,
+        'source_map_url_root': None,
+        'source_map_files_url_root': None,
         'files': (                                                      # list of files to include
             'css/*.css',                                                # pattern matching is done
             ('css/more/test3.css', {
@@ -49,9 +52,12 @@ class Bundle(object):
 
         # Basic settings and defaults
         self.bundle_type = conf_dict['type']
-        self.uglify_command = conf_dict.get('uglify_command')
         self.files_url_root = conf_dict.get('files_url_root', settings.MEDIA_URL)
         self.files_root = conf_dict.get('files_root', settings.MEDIA_ROOT)
+        self.uglify_command = conf_dict.get('uglify_command')
+        self.source_map_file_root = conf_dict.get('source_map_file_root')
+        self.source_map_url_root = conf_dict.get('source_map_url_root')
+        self.source_map_files_url_root = conf_dict.get('source_map_files_url_root') or self.files_url_root
         self.media = conf_dict.get('media')
         self.bundle_url_root = conf_dict.get('bundle_url_root') or self.files_url_root
         self.bundle_file_root = conf_dict.get('bundle_file_root') or self.files_root
