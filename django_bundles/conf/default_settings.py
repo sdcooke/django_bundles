@@ -2,6 +2,8 @@ from django.conf import settings
 
 USE_BUNDLES = not settings.DEBUG
 
+DEVELOPMENT_BUNDLES = ()
+
 DEFAULT_PREPROCESSORS = {
     'less': [
         ('django_bundles.processors.ExecutableProcessor', {'command':'lessc %(infile)s %(outfile)s'}),

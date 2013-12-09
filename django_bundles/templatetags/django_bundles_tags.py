@@ -31,7 +31,7 @@ def _render_bundle(bundle_name, debug=False):
     if debug and not bundle.create_debug:
         raise ImproperlyConfigured("Bundle '%s' does not have a debug bundle" % bundle_name)
 
-    if bundles_settings.USE_BUNDLES:
+    if bundle.use_bundle:
         return _render_file(bundle.bundle_type, bundle.get_debug_url() if debug else bundle.get_url(), attrs=({'media':bundle.media} if bundle.media else {}))
 
     # Render files individually

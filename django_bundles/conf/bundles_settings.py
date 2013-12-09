@@ -23,6 +23,7 @@ class SettingsHelper(object):
 
 bundles_settings = SettingsHelper(settings, default_settings, [
     'USE_BUNDLES',
+    'DEVELOPMENT_BUNDLES',
     'DEFAULT_PREPROCESSORS',
     'DEFAULT_POSTPROCESSORS',
     'BUNDLES_LINTING',

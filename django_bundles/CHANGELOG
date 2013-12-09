@@ -1,0 +1,5 @@
+Version 0.4.1
+=============
+
+ - Added --dev option to create_bundles to set the hash version for each file to "_" (for easy overwriting and removal)
+ - Added DEVELOPMENT_BUNDLES setting - a list of bundles to render as separate tags when USE_BUNDLES=True (useful when developing and only making changes to one or two bundles)

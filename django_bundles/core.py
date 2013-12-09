@@ -124,9 +124,13 @@ class Bundle(object):
         """
         Return a list of file urls - will return a single item if settings.USE_BUNDLES is True
         """
-        if bundles_settings.USE_BUNDLES:
+        if self.use_bundle:
             return [self.get_url()]
         return [bundle_file.file_url for bundle_file in self.files]
+
+    @property
+    def use_bundle(self):
+        return bundles_settings.USE_BUNDLES and self.name not in bundles_settings.DEVELOPMENT_BUNDLES
 
 
 class BundleFile(object):

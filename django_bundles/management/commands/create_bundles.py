@@ -10,6 +10,7 @@ import os
 import collections
 from hashlib import md5
 from tempfile import NamedTemporaryFile
+from optparse import make_option
 
 
 def iter_bundle_files(bundle, debug=False):
@@ -19,7 +20,7 @@ def iter_bundle_files(bundle, debug=False):
         yield '\n'
 
 
-def make_uglify_bundle(bundle, debug=False):
+def make_uglify_bundle(bundle, debug=False, fixed_version=None):
     m = md5()
 
     infile_list = []
@@ -42,7 +43,7 @@ def make_uglify_bundle(bundle, debug=False):
                     m.update(chunk)
                 infile_list.append(bundle_file.file_path)
 
-        hash_version = m.hexdigest()
+        hash_version = fixed_version or m.hexdigest()
 
         debug_part = '.debug' if debug else ''
 
@@ -72,7 +73,7 @@ def make_uglify_bundle(bundle, debug=False):
     return hash_version
 
 
-def make_bundle(bundle, debug=False):
+def make_bundle(bundle, debug=False, fixed_version=None):
     """
     Does all of the processing required to create a bundle and write it to disk, returning its hash version
     """
@@ -89,7 +90,7 @@ def make_bundle(bundle, debug=False):
             m.update(chunk)
             output_file.write(chunk)
 
-    hash_version = m.hexdigest()
+    hash_version = fixed_version or m.hexdigest()
 
     if debug:
         output_file_name = '%s.debug.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), hash_version, bundle.bundle_type)
@@ -104,9 +105,17 @@ def make_bundle(bundle, debug=False):
 class Command(BaseCommand):
     help = "Bundles up the media"
     requires_model_validation = False
+    option_list = BaseCommand.option_list + (
+        make_option('--dev',
+            action='store_true',
+            default=False,
+            help='Do not version files' # This means repeated calls to bundle will just overwrite, and remove_bundles will remove the right things
+        ),
+    )
 
     def handle(self, *args, **options):
         self.stdout.write("Bundling...\n")
+        dev_mode = bool(options.get('dev'))
 
         _bundle_versions = {}
         set_bundle_versions(_bundle_versions)
@@ -115,9 +124,9 @@ class Command(BaseCommand):
             self.stdout.write("Writing bundle: %s\n" % bundle.name)
 
             if bundle.uglify_command:
-                hash_version = make_uglify_bundle(bundle)
+                hash_version = make_uglify_bundle(bundle, fixed_version='_' if dev_mode else None)
             else:
-                hash_version = make_bundle(bundle)
+                hash_version = make_bundle(bundle, fixed_version='_' if dev_mode else None)
 
             # Build bundle versions as we're going along in case they're used in templated bundles
             _bundle_versions[bundle.name] = hash_version
