@@ -47,6 +47,7 @@ class Command(BaseCommand):
                     input_file = NamedTemporaryFile()
                     for chunk in iter_input:
                         input_file.write(chunk)
+                    input_file.flush()
 
                     filename = input_file.name
             else:
