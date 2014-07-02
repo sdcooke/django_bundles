@@ -65,6 +65,6 @@ def serve(request, path, document_root=None, show_indexes=False):
 
         cached = get_file(fullpath)
         if cached:
-            return HttpResponse(cached['contents'], mimetype=cached['mimetype'])
+            return HttpResponse(cached['contents'], content_type=cached['mimetype'])
 
     return django_serve(request, path, document_root=document_root, show_indexes=show_indexes)
