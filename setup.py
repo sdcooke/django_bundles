@@ -2,7 +2,7 @@ from distutils.core import setup
 from setuptools import find_packages
 
 setup(name='django-bundles',
-      version='0.4.3',
+      version='0.4.4',
       description='Another Django media bundler',
       author='Sam Cooke',
       author_email='sam.cooke@xylate.com',
