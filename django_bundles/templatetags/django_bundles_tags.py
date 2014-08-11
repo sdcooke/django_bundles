@@ -38,7 +38,10 @@ def _render_bundle(bundle_name, debug=False):
     bundle_files = []
 
     for bundle_file in bundle.files:
-        bundle_files.append(_render_file(bundle_file.file_type, bundle_file.file_url, attrs=({'media':bundle_file.media} if bundle.media else {})))
+        if bundle_file.precompile_in_debug:
+            bundle_files.append(_render_file(bundle_file.bundle_type, bundle_file.precompile_url, attrs=({'media':bundle_file.media} if bundle.media else {})))
+        else:
+            bundle_files.append(_render_file(bundle_file.file_type, bundle_file.file_url, attrs=({'media':bundle_file.media} if bundle.media else {})))
 
     return '\n'.join(bundle_files)
 

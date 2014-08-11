@@ -39,6 +39,7 @@ class Bundle(object):
             ('django_bundles.processors.ExecutableProcessor', {'command':'lessc {infile} {outfile}'}),   # String and kwargs
         ),
         'debug': False,                                                 # create a debug bundle too (some processors won't be run)
+        'precompile_in_debug': True,                                    # use watch_bundles management command to precompile files and serve them
     }),
 
     """
@@ -63,6 +64,7 @@ class Bundle(object):
         self.bundle_file_root = conf_dict.get('bundle_file_root') or self.files_root
         self.bundle_filename = conf_dict.get('bundle_filename') or self.name
         self.create_debug = conf_dict.get('debug', False)
+        self.precompile_in_debug = False if bundles_settings.GLOBAL_PRECOMPILE_DISABLE else conf_dict.get('precompile_in_debug', False)
 
         # Build the list of BundleFiles
         self.files = []
@@ -78,7 +80,7 @@ class Bundle(object):
             # Expand *s in filenames
             try:
                 for filename in expand_file_names(path, self.files_root):
-                    bundle_file = BundleFile(filename, self.files_root, self.files_url_root, self.media, self.bundle_type, extra=extra)
+                    bundle_file = BundleFile(filename, self.files_root, self.files_url_root, self.media, self.bundle_type, self.precompile_in_debug, extra=extra)
                     self.files.append(bundle_file)
                     self._bundle_files[bundle_file.file_path] = bundle_file
             except OSError:
@@ -146,10 +148,15 @@ class BundleFile(object):
     }
 
     """
-    def __init__(self, filename, files_root, url_root, media, bundle_type, extra=None):
+    def __init__(self, filename, files_root, url_root, media, bundle_type, precompile_in_debug, extra=None):
         # basic settings
+        self.bundle_type = bundle_type
         self.file_path = os.path.join(files_root, filename)
         self.file_url = os.path.join(url_root, filename)
+        self.precompile_in_debug = precompile_in_debug
+        if self.precompile_in_debug:
+            self.precompile_url = os.path.join(url_root, '%s.%s' % (os.path.splitext(filename)[0], self.bundle_type))
+            self.precompile_path = '%s.%s' % (os.path.splitext(self.file_path)[0], self.bundle_type)
         self.media = media
 
         # file_type (or take from extension)

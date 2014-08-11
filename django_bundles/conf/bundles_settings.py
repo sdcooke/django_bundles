@@ -30,4 +30,5 @@ bundles_settings = SettingsHelper(settings, default_settings, [
     'BUNDLES_LINT_SUCCESS_OK',
     'BUNDLES_SINGLE_FILES',
     'BUNDLES_TAG_HTML',
+    'GLOBAL_PRECOMPILE_DISABLE',
 ])

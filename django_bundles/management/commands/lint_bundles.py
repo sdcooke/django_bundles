@@ -25,11 +25,6 @@ class Command(BaseCommand):
         make_option('--pattern',
             help='Simple pattern matching for files',
         ),
-        make_option('--watch',
-            action='store_true',
-            default=False,
-            help='Watch files for changes'
-        ),
     )
     requires_model_validation = False
 
@@ -69,107 +64,10 @@ class Command(BaseCommand):
         return True, ''
 
 
-    def drawscreen(self):
-        import curses
-
-        self.stdout.write(curses.tigetstr('clear'))
-        self.stdout.write("Watching files for changes...")
-
-        if self.errored_files:
-            self.stdout.write(self.style.ERROR('%s file%s to fix' % (len(self.errored_files), 's' if len(self.errored_files) > 1 else '')))
-        else:
-            self.stdout.write(self.style.HTTP_REDIRECT('no files to fix'))
-
-        self.stdout.write("\n")
-
-        self.stdout.write(curses.tigetstr('cud1') * 2)
-
-        for filename, error_message in self.errored_files.iteritems():
-            self.stdout.write('\t' + self.style.HTTP_SERVER_ERROR(filename) + '\n')
-            self.stdout.write(self.style.HTTP_SERVER_ERROR('\n'.join(['\t\t' + error_line for error_line in error_message.split('\n')])) + '\n\n')
-
-        self.stdout.write(curses.tigetstr('cud1') * 2)
-
-        for log_line in reversed(self.log_lines):
-            self.stdout.write('\t' + log_line + '\n')
-
-
-    def log_watch_result(self, src, result, error_message=None):
-        if result:
-            if src in self.errored_files:
-                del self.errored_files[src]
-            self.log_lines.append(self.style.HTTP_SUCCESS('OK\t\t%s' % src))
-        else:
-            self.log_lines.append(self.style.HTTP_SERVER_ERROR('FAIL\t\t%s' % src))
-            self.errored_files[src] = self.style.HTTP_SERVER_ERROR(error_message)
-
-        self.log_lines = self.log_lines[-5:]
-        self.drawscreen()
-
-
     def handle(self, *args, **options):
         self.show_successes = not bool(options.get('failures_only'))
         watch = bool(options.get('watch'))
         file_pattern = options.get('pattern')
-
-
-        if watch:
-            try:
-                import time
-                from watchdog.observers import Observer
-                from watchdog.events import FileSystemEventHandler
-                import curses
-            except ImportError:
-                raise CommandError('watchdog is required for this (pip install watchdog')
-
-            self.errored_files = {}
-            self.log_lines = []
-            watching = {}
-
-            def check_and_lint_file(src):
-                # TODO: don't repeatedly lint the same file
-                for watchdir in watching:
-                    if watchdir in src:
-                        for bundle in watching[watchdir]:
-                            if src in bundle:
-                                result, error_message = self.lint_file(bundle.bundle_type, src, iter_input=processor_pipeline(bundle[src].processors, FileChunkGenerator(open(src, 'rb'))))
-                                self.log_watch_result(src, result, error_message=error_message)
-                                break
-
-            class FileEventHandler(FileSystemEventHandler):
-                def on_created(self, event):
-                    if not event.is_directory:
-                        check_and_lint_file(event.src_path)
-
-                def on_modified(self, event):
-                    if not event.is_directory:
-                        check_and_lint_file(event.src_path)
-
-            # TODO: watchdog dirsnapshot line 97 patched (otherwise it doesn't work with PyCharm)
-            #        #if stat_info.st_ino == ref_stat_info.st_ino and stat_info.st_mtime != ref_stat_info.st_mtime:
-            #        if stat_info.st_mtime != ref_stat_info.st_mtime:
-
-            event_handler = FileEventHandler()
-            observer = Observer()
-            curses.setupterm()
-            self.drawscreen()
-
-            for bundle in get_bundles():
-                if bundle.files_root not in watching:
-                    watching[bundle.files_root] = set()
-                    observer.schedule(event_handler, path=bundle.files_root, recursive=True)
-                watching[bundle.files_root].add(bundle)
-
-            observer.start()
-            try:
-                while True:
-                    time.sleep(10)
-            except KeyboardInterrupt:
-                observer.stop()
-            observer.join()
-
-            return
-
 
         files_linted = set()
 

@@ -1,3 +1,8 @@
+Version 0.5.0
+=============
+
+ - Added watch_bundles management command and precompile_in_debug option
+
 Version 0.4.1
 =============
 

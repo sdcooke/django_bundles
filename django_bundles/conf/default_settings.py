@@ -27,3 +27,5 @@ BUNDLES_TAG_HTML = {
     'css': '<link href="%(file_url)s" type="text/css" rel="stylesheet"%(attrs)s />',
     'less': '<link href="%(file_url)s" type="text/less" rel="stylesheet/less"%(attrs)s />',
 }
+
+GLOBAL_PRECOMPILE_DISABLE = False
