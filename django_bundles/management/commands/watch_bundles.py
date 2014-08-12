@@ -14,18 +14,22 @@ import os
 from tempfile import NamedTemporaryFile
 
 
+LOG_LINES = 10
+
+
 class Command(BaseCommand):
     help = "Watches the bundles to lint and preprocess files"
     requires_model_validation = False
 
-    def lint_file(self, bundle_type, file_path, iter_input=None):
-        command = bundles_settings.BUNDLES_LINTING[bundle_type]['command']
+    def lint_file(self, full_path, bundle):
+        try:
+            iter_input = processor_pipeline(bundle[full_path].processors, FileChunkGenerator(open(full_path, 'rb')))
+            command = bundles_settings.BUNDLES_LINTING[bundle.bundle_type]['command']
 
-        input_file = None
-        stdin = None
+            input_file = None
+            stdin = None
 
-        if '{infile}' in command:
-            if iter_input:
+            if '{infile}' in command:
                 if hasattr(iter_input, 'file_path'):
                     filename = iter_input.file_path
                 else:
@@ -35,24 +39,26 @@ class Command(BaseCommand):
                     input_file.flush()
 
                     filename = input_file.name
-            else:
-                filename = file_path
 
-            command = command.format(infile=filename)
-        else:
-            if iter_input:
+                command = command.format(infile=filename)
+            else:
                 stdin = iter_input
-            else:
-                stdin = input_file = open(file_path, 'rb')
 
-        try:
             # Consume the iterator into a zero length deque
             collections.deque(run_process(command, stdin=stdin, to_close=input_file), maxlen=0)
+            self.log_watch_result(full_path, True)
         except CalledProcessError as e:
-            return False, e.output
+            self.log_watch_result(full_path, False, error_message=e.output)
 
-        return True, ''
-
+    def precompile(self, full_path, bundle):
+        if bundle.precompile_in_debug and bundle[full_path].processors:
+            try:
+                with open(bundle[full_path].precompile_path, 'wb') as output_file:
+                    for chunk in processor_pipeline(bundle[full_path].processors, FileChunkGenerator(open(full_path, 'rb'))):
+                        output_file.write(chunk)
+                self.log_precompile_result(full_path, True)
+            except CalledProcessError:
+                self.log_precompile_result(full_path, False)
 
     def drawscreen(self):
         import curses
@@ -63,7 +69,7 @@ class Command(BaseCommand):
         if self.errored_files:
             self.stdout.write(self.style.ERROR('%s file%s to fix' % (len(self.errored_files), 's' if len(self.errored_files) > 1 else '')))
         else:
-            self.stdout.write(self.style.HTTP_REDIRECT('no files to fix'))
+            self.stdout.write(self.style.HTTP_REDIRECT('No files to fix'))
 
         self.stdout.write("\n")
 
@@ -78,7 +84,6 @@ class Command(BaseCommand):
         for log_line in reversed(self.log_lines):
             self.stdout.write('\t' + log_line + '\n')
 
-
     def log_watch_result(self, src, result, error_message=None):
         if result:
             if src in self.errored_files:
@@ -88,14 +93,16 @@ class Command(BaseCommand):
             self.log_lines.append(self.style.HTTP_SERVER_ERROR('FAIL\t\t%s' % src))
             self.errored_files[src] = self.style.HTTP_SERVER_ERROR(error_message)
 
-        self.log_lines = self.log_lines[-10:]
+        self.log_lines = self.log_lines[-LOG_LINES:]
         self.drawscreen()
 
-    def log_precompile_result(self, src):
-        self.log_lines.append(self.style.HTTP_SUCCESS('PRECOMPILED\t\t%s' % src))
-        self.log_lines = self.log_lines[-10:]
+    def log_precompile_result(self, src, success):
+        if success:
+            self.log_lines.append(self.style.HTTP_SUCCESS('PRECOMPILED\t\t%s' % src))
+        else:
+            self.log_lines.append(self.style.HTTP_SERVER_ERROR('PRECOMPILE FAILED\t\t%s' % src))
+        self.log_lines = self.log_lines[-LOG_LINES:]
         self.drawscreen()
-
 
     def handle(self, *args, **options):
         try:
@@ -110,24 +117,19 @@ class Command(BaseCommand):
         self.log_lines = []
         watching = {}
 
-        def precompile(full_path, bundle):
-            if bundle.precompile_in_debug and bundle[full_path].processors:
-                with open(bundle[full_path].precompile_path, 'wb') as output_file:
-                    for chunk in processor_pipeline(bundle[full_path].processors, FileChunkGenerator(open(full_path, 'rb'))):
-                        output_file.write(chunk)
-                self.log_precompile_result(full_path)
-
         def check_and_lint_file(src):
+            """
+            Called when a watched file changes
+            """
             full_path = os.path.realpath(os.path.join(os.getcwd(), src))
 
             for watchdir in watching:
                 if watchdir in src:
                     for bundle in watching[watchdir]:
                         if full_path in bundle:
-                            precompile(full_path, bundle)
-                            result, error_message = self.lint_file(bundle.bundle_type, full_path, iter_input=processor_pipeline(bundle[full_path].processors, FileChunkGenerator(open(full_path, 'rb'))))
-                            self.log_watch_result(full_path, result, error_message=error_message)
-                            return
+                            self.precompile(full_path, bundle)
+                            self.lint_file(full_path, bundle)
+                            return  # file could appear in multiple bundles
 
         class FileEventHandler(FileSystemEventHandler):
             def on_created(self, event):
@@ -143,9 +145,12 @@ class Command(BaseCommand):
         curses.setupterm()
         self.drawscreen()
 
+        # First time we start, precompile everything
         initial_run = set()
 
         for bundle in get_bundles():
+            # Note: all of this stuff with os.getcwd() is because watchdog seems to only work with
+            # relative paths, not absolute
             watch_path = bundle.files_root.replace(os.getcwd(), '.')
             if watch_path not in watching:
                 watching[watch_path] = set()
@@ -153,10 +158,10 @@ class Command(BaseCommand):
             watching[watch_path].add(bundle)
 
             for bundle_file in bundle.files:
-                if bundle_file in initial_run:
+                if bundle_file.file_path in initial_run:
                     continue
-                initial_run.add(bundle_file)
-                precompile(bundle_file.file_path, bundle)
+                initial_run.add(bundle_file.file_path)
+                self.precompile(bundle_file.file_path, bundle)
 
         observer.start()
         try:
