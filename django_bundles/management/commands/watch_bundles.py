@@ -121,7 +121,7 @@ class Command(BaseCommand):
             """
             Called when a watched file changes
             """
-            full_path = os.path.realpath(os.path.join(os.getcwd(), src))
+            full_path = os.path.realpath(src)
 
             for watchdir in watching:
                 if watchdir in src:
@@ -149,9 +149,8 @@ class Command(BaseCommand):
         initial_run = set()
 
         for bundle in get_bundles():
-            # Note: all of this stuff with os.getcwd() is because watchdog seems to only work with
-            # relative paths, not absolute
-            watch_path = bundle.files_root.replace(os.getcwd(), '.')
+            # Note: watchdog seems to only work with relative paths
+            watch_path = os.path.relpath(bundle.files_root)
             if watch_path not in watching:
                 watching[watch_path] = set()
                 observer.schedule(event_handler, path=watch_path, recursive=True)
