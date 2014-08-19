@@ -9,8 +9,6 @@ import collections
 
 
 class Processor(object):
-    include_in_debug = True
-
     def __init__(self, **kwargs):
         for key, value in kwargs.iteritems():
             setattr(self, key, value)
@@ -58,13 +56,11 @@ class ExecutableProcessor(Processor):
             return g
 
 
-def processor_pipeline(processors, iter_input, debug=False):
+def processor_pipeline(processors, iter_input):
     pipeline = iter_input
 
     for processor in processors:
         if not processor:
-            continue
-        if debug and not processor.include_in_debug:
             continue
 
         pipeline = processor.process(pipeline)

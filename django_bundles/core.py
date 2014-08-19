@@ -31,6 +31,8 @@ class Bundle(object):
         'bundle_url_root': settings.MEDIA_URL,                          # Root URL for the bundle file [OPTIONAL - defaults to files_url_root]
         'bundle_file_root': settings.MEDIA_ROOT,                        # Root path for the bundle file [OPTIONAL - defaults to files_root]
         'bundle_filename': 'master_css',                                # Filename for the bundle (without extension) [OPTIONAL - defaults to the bundle name]
+        'bundle_url': None,                                             # A full fixed URL for the bundle (overrides url_root and hashed file name)
+        'bundle_file_path': None,                                       # To be used together with bundle_url to override the file root and hashed file name
         'processors': (                                                 # A list of post processors for the bundle (e.g. minifying) [OPTIONAL - defaults to the default processors for the bundle type]
             'django_bundles.processors.django_template.DjangoTemplateProcessor',                             # String,
             DjangoTemplateProcessor,                                                                         # Class,
@@ -38,7 +40,6 @@ class Bundle(object):
             (ExecutableProcessor, {'command':'lessc {infile} {outfile}'}),                               # Class and kwargs
             ('django_bundles.processors.ExecutableProcessor', {'command':'lessc {infile} {outfile}'}),   # String and kwargs
         ),
-        'debug': False,                                                 # create a debug bundle too (some processors won't be run)
         'precompile_in_debug': True,                                    # use watch_bundles management command to precompile files and serve them
     }),
 
@@ -63,8 +64,9 @@ class Bundle(object):
         self.bundle_url_root = conf_dict.get('bundle_url_root') or self.files_url_root
         self.bundle_file_root = conf_dict.get('bundle_file_root') or self.files_root
         self.bundle_filename = conf_dict.get('bundle_filename') or self.name
-        self.create_debug = conf_dict.get('debug', False)
         self.precompile_in_debug = False if bundles_settings.GLOBAL_PRECOMPILE_DISABLE else conf_dict.get('precompile_in_debug', False)
+        self.fixed_bundle_url = conf_dict.get('bundle_url')
+        self.fixed_bundle_file_path = conf_dict.get('bundle_file_path')
 
         # Build the list of BundleFiles
         self.files = []
@@ -104,23 +106,18 @@ class Bundle(object):
         """
         return get_bundle_versions().get(self.name)
 
-    def get_debug_version(self):
-        """
-        Returns the current hash for the debug version of this bundle
-        """
-        return get_bundle_versions().get('debug:' + self.name)
-
     def get_url(self, version=None):
         """
         Return the filename of the bundled bundle
         """
+        if self.fixed_bundle_url:
+            return self.fixed_bundle_url
         return '%s.%s.%s' % (os.path.join(self.bundle_url_root, self.bundle_filename), version or self.get_version(), self.bundle_type)
 
-    def get_debug_url(self):
-        """
-        Return the filename of the bundled debug bundle
-        """
-        return '%s.debug.%s.%s' % (os.path.join(self.bundle_url_root, self.bundle_filename), self.get_debug_version(), self.bundle_type)
+    def get_path(self, hash_version):
+        if self.fixed_bundle_file_path:
+            return self.fixed_bundle_file_path
+        return '%s.%s.%s' % (os.path.join(self.bundle_file_root, self.bundle_filename), hash_version, self.bundle_type)
 
     def get_file_urls(self):
         """

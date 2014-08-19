@@ -27,7 +27,6 @@ class BundleConfTest(TestCase):
                 'processors': (
                     ('django_bundles.processors.ExecutableProcessor', {'command': 'cat {infile}'}),
                 ),
-                'debug': True,
             }
         ))
 
@@ -40,7 +39,6 @@ class BundleConfTest(TestCase):
         self.assertEqual(self.bundle.bundle_filename, 'test_bundle')
         self.assertEqual(self.bundle.bundle_url_root, settings.MEDIA_URL)
         self.assertEqual(self.bundle.bundle_file_root, os.path.join(os.path.dirname(__file__), 'files'))
-        self.assertTrue(self.bundle.create_debug)
 
 
     def test_processor_conf(self):

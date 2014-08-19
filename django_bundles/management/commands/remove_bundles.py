@@ -14,7 +14,7 @@ class Command(BaseCommand):
 
         for bundle in get_bundles():
             hash_version = bundle_versions[bundle.name]
-            bundle_path = '%s.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), hash_version, bundle.bundle_type)
+            bundle_path = bundle.get_path(hash_version)
             self.stdout.write("Removing bundle: %s\n" % bundle_path)
             try:
                 os.remove(bundle_path)
@@ -29,15 +29,6 @@ class Command(BaseCommand):
                         os.remove('%s.map' % bundle_path)
                 except:
                     self.stderr.write("Could not remove bundle source map: %s.map\n" % bundle_path)
-
-            if bundle.create_debug:
-                debug_hash_version = bundle_versions['debug:' + bundle.name]
-
-                bundle_debug_path = '%s.debug.%s.%s' % (os.path.join(bundle.bundle_file_root, bundle.bundle_filename), debug_hash_version, bundle.bundle_type)
-                try:
-                    os.remove(bundle_debug_path)
-                except:
-                    self.stderr.write("Could not remove debug bundle: %s\n" % bundle_debug_path)
 
         self.stdout.write("Removing bundles version file: %s\n" % bundles_settings.BUNDLES_VERSION_FILE)
         os.remove(bundles_settings.BUNDLES_VERSION_FILE)

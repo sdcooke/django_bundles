@@ -19,7 +19,7 @@ def _render_file(file_type, file_url, attrs=None):
     }
 
 
-def _render_bundle(bundle_name, debug=False):
+def _render_bundle(bundle_name):
     """
     Renders the HTML for a bundle in place - one HTML tag or many depending on settings.USE_BUNDLES
     """
@@ -28,11 +28,8 @@ def _render_bundle(bundle_name, debug=False):
     except KeyError:
         raise ImproperlyConfigured("Bundle '%s' is not defined" % bundle_name)
 
-    if debug and not bundle.create_debug:
-        raise ImproperlyConfigured("Bundle '%s' does not have a debug bundle" % bundle_name)
-
     if bundle.use_bundle:
-        return _render_file(bundle.bundle_type, bundle.get_debug_url() if debug else bundle.get_url(), attrs=({'media':bundle.media} if bundle.media else {}))
+        return _render_file(bundle.bundle_type, bundle.get_url(), attrs=({'media':bundle.media} if bundle.media else {}))
 
     # Render files individually
     bundle_files = []
@@ -49,11 +46,6 @@ def _render_bundle(bundle_name, debug=False):
 @register.simple_tag
 def render_bundle(bundle_name):
     return _render_bundle(bundle_name)
-
-
-@register.simple_tag
-def render_debug_bundle(bundle_name):
-    return _render_bundle(bundle_name, debug=True)
 
 
 @register.assignment_tag(name='get_bundles')
