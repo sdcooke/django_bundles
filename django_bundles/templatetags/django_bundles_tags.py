@@ -19,7 +19,7 @@ def _render_file(file_type, file_url, attrs=None):
     }
 
 
-def _render_bundle(bundle_name):
+def _render_bundle(context, bundle_name):
     """
     Renders the HTML for a bundle in place - one HTML tag or many depending on settings.USE_BUNDLES
     """
@@ -29,6 +29,10 @@ def _render_bundle(bundle_name):
         raise ImproperlyConfigured("Bundle '%s' is not defined" % bundle_name)
 
     if bundle.use_bundle:
+        if 'request' in context:
+            if not hasattr(context['request'], 'rendered_bundles'):
+                context['request'].rendered_bundles = []
+            context['request'].rendered_bundles.append(bundle)
         return _render_file(bundle.bundle_type, bundle.get_url(), attrs=({'media':bundle.media} if bundle.media else {}))
 
     # Render files individually
@@ -43,9 +47,9 @@ def _render_bundle(bundle_name):
     return '\n'.join(bundle_files)
 
 
-@register.simple_tag
-def render_bundle(bundle_name):
-    return _render_bundle(bundle_name)
+@register.simple_tag(takes_context=True)
+def render_bundle(context, bundle_name):
+    return _render_bundle(context, bundle_name)
 
 
 @register.assignment_tag(name='get_bundles')
