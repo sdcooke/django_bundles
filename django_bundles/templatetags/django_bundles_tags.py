@@ -1,5 +1,6 @@
 from django import template
 
+from django.utils.safestring import mark_safe
 from django.core.exceptions import ImproperlyConfigured
 
 from django_bundles.conf.bundles_settings import bundles_settings
@@ -45,7 +46,7 @@ def _render_bundle(bundle_name):
 
 @register.simple_tag
 def render_bundle(bundle_name):
-    return _render_bundle(bundle_name)
+    return mark_safe(_render_bundle(bundle_name))
 
 
 @register.assignment_tag(name='get_bundles')
