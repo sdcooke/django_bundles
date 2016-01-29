@@ -97,6 +97,23 @@ def make_bundle(bundle, fixed_version=None):
     return hash_version
 
 
+
+from multiprocessing.dummy import Pool
+
+
+def do_make_bundle(args):
+    bundle, fixed_version = args
+    print bundle.name
+
+    if bundle.uglify_command:
+        hash_version = make_uglify_bundle(bundle, fixed_version=fixed_version)
+    else:
+        hash_version = make_bundle(bundle, fixed_version=fixed_version)
+
+    return hash_version
+
+
+
 class Command(BaseCommand):
     help = "Bundles up the media"
     requires_model_validation = False
@@ -115,6 +132,18 @@ class Command(BaseCommand):
         _bundle_versions = {}
         set_bundle_versions(_bundle_versions)
 
+        pool = Pool(1)
+        results = pool.map(do_make_bundle, [
+            (bundle, '_' if dev_mode else None)
+            for bundle in get_bundles()
+        ])
+        pool.close()
+        pool.join()
+
+        print "RESULTS", results
+        return
+
+
         for bundle in get_bundles():
             self.stdout.write("Writing bundle: %s\n" % bundle.name)
 
@@ -127,6 +156,20 @@ class Command(BaseCommand):
             _bundle_versions[bundle.name] = hash_version
 
             self.stdout.write("\t%s\n" % bundle.get_version())
+
+
+        # for bundle in get_bundles():
+        #     self.stdout.write("Writing bundle: %s\n" % bundle.name)
+        #
+        #     if bundle.uglify_command:
+        #         hash_version = make_uglify_bundle(bundle, fixed_version='_' if dev_mode else None)
+        #     else:
+        #         hash_version = make_bundle(bundle, fixed_version='_' if dev_mode else None)
+        #
+        #     # Build bundle versions as we're going along in case they're used in templated bundles
+        #     _bundle_versions[bundle.name] = hash_version
+        #
+        #     self.stdout.write("\t%s\n" % bundle.get_version())
 
         version_info = '\n'.join(['    "%s": "%s",' % version for version in _bundle_versions.iteritems()])
 
