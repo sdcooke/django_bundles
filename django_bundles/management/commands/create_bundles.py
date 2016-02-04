@@ -139,7 +139,6 @@ class Command(BaseCommand):
             results = pool.map(do_make_bundle, [
                 (bundle, '_' if dev_mode else None)
                 for bundle in get_bundles()
-                if bundle.bundle_type == 'css'
             ])
             pool.close()
             pool.join()

@@ -1,3 +1,9 @@
+Version 0.6.5
+=============
+
+ - Added --parallel option to create_bundles and lint_bundles management commands
+ - Added cwd option to run_process and ExecutableProcessor
+
 Version 0.6.0
 =============
 
