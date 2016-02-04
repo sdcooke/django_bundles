@@ -105,12 +105,7 @@ def do_make_bundle(args):
     if bundle.uglify_command:
         hash_version = make_uglify_bundle(bundle, fixed_version=fixed_version)
     else:
-        try:
-            hash_version = make_bundle(bundle, fixed_version=fixed_version)
-        except Exception, e:
-            import sys
-            sys.stderr.write('\n%s: %s\n' % (bundle.name, e))
-            return bundle.name, None
+        hash_version = make_bundle(bundle, fixed_version=fixed_version)
 
     return bundle.name, hash_version
 
@@ -155,11 +150,7 @@ class Command(BaseCommand):
             for bundle in get_bundles():
                 self.stdout.write("Writing bundle: %s\n" % bundle.name)
 
-                if bundle.uglify_command:
-                    hash_version = make_uglify_bundle(bundle, fixed_version='_' if dev_mode else None)
-                else:
-                    hash_version = make_bundle(bundle, fixed_version='_' if dev_mode else None)
-
+                _, hash_version = do_make_bundle((bundle, '_' if dev_mode else None))
                 # Build bundle versions as we're going along in case they're used in templated bundles
                 _bundle_versions[bundle.name] = hash_version
 
