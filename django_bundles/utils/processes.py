@@ -7,12 +7,12 @@ import os
 _PIPE_BUF = getattr(select, 'PIPE_BUF', 512)
 
 
-def run_process(cmd, stdin=None, iterate_stdin=True, output_chunk_size=1024, shell=True, to_close=None):
+def run_process(cmd, stdin=None, iterate_stdin=True, output_chunk_size=1024, shell=True, to_close=None, cwd=None):
     """
     This is a modification of subprocess.Popen.communicate that accepts an iterable stdin and is itself a generator for stdout
     """
     try:
-        p = subprocess.Popen(cmd, shell=shell, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p = subprocess.Popen(cmd, shell=shell, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
 
         if stdin:
             if iterate_stdin:

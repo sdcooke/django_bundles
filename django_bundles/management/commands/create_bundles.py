@@ -12,6 +12,8 @@ from hashlib import md5
 from tempfile import NamedTemporaryFile
 from optparse import make_option
 
+from multiprocessing.dummy import Pool
+
 
 def iter_bundle_files(bundle):
     for bundle_file in bundle.files:
@@ -97,21 +99,20 @@ def make_bundle(bundle, fixed_version=None):
     return hash_version
 
 
-
-from multiprocessing.dummy import Pool
-
-
 def do_make_bundle(args):
     bundle, fixed_version = args
-    print bundle.name
 
     if bundle.uglify_command:
         hash_version = make_uglify_bundle(bundle, fixed_version=fixed_version)
     else:
-        hash_version = make_bundle(bundle, fixed_version=fixed_version)
+        try:
+            hash_version = make_bundle(bundle, fixed_version=fixed_version)
+        except Exception, e:
+            import sys
+            sys.stderr.write('\n%s: %s\n' % (bundle.name, e))
+            return bundle.name, None
 
-    return hash_version
-
+    return bundle.name, hash_version
 
 
 class Command(BaseCommand):
@@ -123,6 +124,11 @@ class Command(BaseCommand):
             default=False,
             help='Do not version files' # This means repeated calls to bundle will just overwrite, and remove_bundles will remove the right things
         ),
+        make_option('--parallel',
+            action='store_true',
+            default=False,
+            help='Create bundles in parallel'
+        ),
     )
 
     def handle(self, *args, **options):
@@ -132,44 +138,32 @@ class Command(BaseCommand):
         _bundle_versions = {}
         set_bundle_versions(_bundle_versions)
 
-        pool = Pool(1)
-        results = pool.map(do_make_bundle, [
-            (bundle, '_' if dev_mode else None)
-            for bundle in get_bundles()
-        ])
-        pool.close()
-        pool.join()
+        if options.get('parallel'):
+            self.stdout.write("Writing bundles in parallel\n")
+            pool = Pool()
+            results = pool.map(do_make_bundle, [
+                (bundle, '_' if dev_mode else None)
+                for bundle in get_bundles()
+                if bundle.bundle_type == 'css'
+            ])
+            pool.close()
+            pool.join()
 
-        print "RESULTS", results
-        return
+            for bundle_name, hash_version in results:
+                _bundle_versions[bundle_name] = hash_version
+        else:
+            for bundle in get_bundles():
+                self.stdout.write("Writing bundle: %s\n" % bundle.name)
 
+                if bundle.uglify_command:
+                    hash_version = make_uglify_bundle(bundle, fixed_version='_' if dev_mode else None)
+                else:
+                    hash_version = make_bundle(bundle, fixed_version='_' if dev_mode else None)
 
-        for bundle in get_bundles():
-            self.stdout.write("Writing bundle: %s\n" % bundle.name)
+                # Build bundle versions as we're going along in case they're used in templated bundles
+                _bundle_versions[bundle.name] = hash_version
 
-            if bundle.uglify_command:
-                hash_version = make_uglify_bundle(bundle, fixed_version='_' if dev_mode else None)
-            else:
-                hash_version = make_bundle(bundle, fixed_version='_' if dev_mode else None)
-
-            # Build bundle versions as we're going along in case they're used in templated bundles
-            _bundle_versions[bundle.name] = hash_version
-
-            self.stdout.write("\t%s\n" % bundle.get_version())
-
-
-        # for bundle in get_bundles():
-        #     self.stdout.write("Writing bundle: %s\n" % bundle.name)
-        #
-        #     if bundle.uglify_command:
-        #         hash_version = make_uglify_bundle(bundle, fixed_version='_' if dev_mode else None)
-        #     else:
-        #         hash_version = make_bundle(bundle, fixed_version='_' if dev_mode else None)
-        #
-        #     # Build bundle versions as we're going along in case they're used in templated bundles
-        #     _bundle_versions[bundle.name] = hash_version
-        #
-        #     self.stdout.write("\t%s\n" % bundle.get_version())
+                self.stdout.write("\t%s\n" % bundle.get_version())
 
         version_info = '\n'.join(['    "%s": "%s",' % version for version in _bundle_versions.iteritems()])
 

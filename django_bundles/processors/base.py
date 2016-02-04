@@ -19,6 +19,7 @@ class Processor(object):
 
 class ExecutableProcessor(Processor):
     command = None
+    cwd = None
 
     def process(self, iter_input):
         input_file = output_file = None
@@ -46,7 +47,7 @@ class ExecutableProcessor(Processor):
 
         command = self.command.format(**format_kwargs)
 
-        g = run_process(command, stdin=stdin, to_close=input_file)
+        g = run_process(command, stdin=stdin, to_close=input_file, cwd=self.cwd)
 
         if output_file:
             # Consume the iterator into a zero length deque
