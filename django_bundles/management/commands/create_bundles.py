@@ -10,7 +10,6 @@ import os
 import collections
 from hashlib import md5
 from tempfile import NamedTemporaryFile
-from optparse import make_option
 
 from multiprocessing.dummy import Pool
 
@@ -113,27 +112,19 @@ def do_make_bundle(args):
 class Command(BaseCommand):
     help = "Bundles up the media"
     requires_model_validation = False
-    option_list = BaseCommand.option_list + (
-        make_option('--dev',
-            action='store_true',
-            default=False,
-            help='Do not version files' # This means repeated calls to bundle will just overwrite, and remove_bundles will remove the right things
-        ),
-        make_option('--parallel',
-            action='store_true',
-            default=False,
-            help='Create bundles in parallel'
-        ),
-    )
+
+    def add_arguments(self, parser):
+        parser.add_argument('--dev', action='store_true', default=False, help='Do not version files') # This means repeated calls to bundle will just overwrite, and remove_bundles will remove the right things
+        parser.add_argument('--parallel', action='store_true', default=False, help='Parallel for speed')
 
     def handle(self, *args, **options):
         self.stdout.write("Bundling...\n")
-        dev_mode = bool(options.get('dev'))
+        dev_mode = bool(options['dev'])
 
         _bundle_versions = {}
         set_bundle_versions(_bundle_versions)
 
-        if options.get('parallel'):
+        if options['parallel']:
             self.stdout.write("Writing bundles in parallel\n")
             pool = Pool()
             results = pool.map(do_make_bundle, [

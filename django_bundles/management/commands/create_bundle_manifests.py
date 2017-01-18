@@ -1,8 +1,6 @@
 import os
 import uuid
 
-from optparse import make_option
-
 from django.core.management.base import BaseCommand
 
 from django_bundles.core import get_bundles
@@ -14,11 +12,9 @@ class Command(BaseCommand):
     args = "target_directory"
     help = "Writes out files containing the list of input files for each bundle"
     requires_model_validation = False
-    option_list = BaseCommand.option_list + (
-        make_option('--bundle-type',
-            help='Limit output to specific bundle types',
-        ),
-    )
+
+    def add_arguments(self, parser):
+        parser.add_argument('--bundle-type', help='Limit output to specific bundle types')
 
     def handle(self, target_directory, *args, **options):
         try:
@@ -27,7 +23,7 @@ class Command(BaseCommand):
             pass
 
         for bundle in get_bundles():
-            if options.get('bundle_type') and bundle.bundle_type != options.get('bundle_type'):
+            if options['bundle_type'] and bundle.bundle_type != options['bundle_type']:
                 continue
             manifest_filename = os.path.join(target_directory, bundle.name) + '.manifest'
             with open(manifest_filename, 'w') as manifest:

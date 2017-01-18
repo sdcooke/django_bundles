@@ -7,7 +7,6 @@ from django_bundles.utils.files import FileChunkGenerator
 from django_bundles.utils.processes import run_process
 from django_bundles.conf.bundles_settings import bundles_settings
 
-from optparse import make_option
 import collections
 
 import os
@@ -59,26 +58,16 @@ def do_lint_file(args):
 
 class Command(BaseCommand):
     help = "Lints the bundles based on settings.BUNDLES_LINTING"
-    option_list = BaseCommand.option_list + (
-        make_option('--failures-only',
-            action='store_true',
-            default=False,
-            help='Only report failures'
-        ),
-        make_option('--pattern',
-            help='Simple pattern matching for files',
-        ),
-        make_option('--parallel',
-            action='store_true',
-            default=False,
-            help='Parallel for speed',
-        ),
-    )
     requires_model_validation = False
 
+    def add_arguments(self, parser):
+        parser.add_argument('--failures-only', action='store_true', default=False, help='Only report failures')
+        parser.add_argument('--pattern', help='Simple pattern matching for files')
+        parser.add_argument('--parallel', action='store_true', default=False, help='Parallel for speed')
+
     def handle(self, *args, **options):
-        show_successes = not bool(options.get('failures_only'))
-        file_pattern = options.get('pattern')
+        show_successes = not bool(options['failures_only'])
+        file_pattern = options['pattern']
 
         failures = 0
         files_added = set()
@@ -116,7 +105,7 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.HTTP_SERVER_ERROR(error_message))
                 return 1
 
-        if options.get('parallel'):
+        if options['parallel']:
             pool = Pool()
             results = pool.map(do_lint_file, files_to_lint)
             pool.close()
