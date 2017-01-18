@@ -1,5 +1,7 @@
 # django_bundles: Another Django media bundler
 
+[ ![Codeship Status for sdcooke/django_bundles](https://app.codeship.com/projects/0c103e40-bfc2-0134-f0da-2e2c936c1245/status?branch=master)](https://app.codeship.com/projects/196714)
+
 django_bundles is a media bundler for Django. It can be used to bundle groups of media files (e.g. CSS, JavaScript) into a single file with a hash in the filename (to play nicely with browser caching) whilst keeping the files separate during development.
 
 There are ideas taken from a lot of the other media bundlers - none of them worked quite how I wanted and I fancied writing my own.
