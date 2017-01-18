@@ -15,7 +15,8 @@ class BundleConfTest(TestCase):
             'test_bundle', {
                 'type': 'css',
                 'files': (
-                    'test*.css',
+                    'test1.css',
+                    'test2.css',
                     ('another.css', {
                         'processors': (
                             ('django_bundles.processors.ExecutableProcessor', {'command': 'cat {infile}'}),
