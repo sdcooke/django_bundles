@@ -14,9 +14,11 @@ class Command(BaseCommand):
     requires_model_validation = False
 
     def add_arguments(self, parser):
+        parser.add_argument('target_directory', nargs='+', type=str)
         parser.add_argument('--bundle-type', help='Limit output to specific bundle types')
 
-    def handle(self, target_directory, *args, **options):
+    def handle(self, *args, **options):
+        target_directory = options['target_directory'][0]
         try:
             os.mkdir(target_directory)
         except OSError:
