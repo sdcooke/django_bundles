@@ -4,3 +4,4 @@
 ._*
 dist/*
 django_bundles.egg-info/*
+.tox/*
