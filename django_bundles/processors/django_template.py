@@ -1,4 +1,5 @@
 from django.views.debug import get_safe_settings
+from django.template import Context, Template
 from django.template import engines
 
 from django_bundles.core import get_bundles
@@ -20,6 +21,6 @@ class DjangoTemplateProcessor(Processor):
             }
 
     def process(self, iter_input):
-        template = engines.['django'].from_string(''.join(iter_input))
+        template = engines['django'].from_string(''.join(iter_input))
         yield template.render(self.get_context())
 
