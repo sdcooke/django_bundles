@@ -18,7 +18,7 @@ class SettingsHelper(object):
         if name in self.optional_defaults:
             return getattr(self.default_settings, name)
 
-        raise ImproperlyConfigured, "%s is a required setting for django_bundles" % name
+        raise ImproperlyConfigured("%s is a required setting for django_bundles" % name)
 
 
 bundles_settings = SettingsHelper(settings, default_settings, [
