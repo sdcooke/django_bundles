@@ -25,7 +25,7 @@ class RunProcessTest(TestCase):
 
 
     def test_stdin_iter(self):
-        stdin_iter = ("TEST%s" % x for x in xrange(0, 3))
+        stdin_iter = ("TEST%s" % x for x in range(0, 3))
 
         output = ''.join(run_process('cat', stdin=stdin_iter))
 
