@@ -1,3 +1,7 @@
+# THIS IS NOW DEPRECATED
+
+I'd recommend using webpack or something else - I'm not using it any more so it won't be receiving any further development.
+
 # django_bundles: Another Django media bundler
 
 django_bundles is a media bundler for Django. It can be used to bundle groups of media files (e.g. CSS, JavaScript) into a single file with a hash in the filename (to play nicely with browser caching) whilst keeping the files separate during development.
